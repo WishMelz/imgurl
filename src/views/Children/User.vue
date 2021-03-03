@@ -48,7 +48,7 @@
             </el-form-item>
             <el-form-item label="自定义目录">
               <el-checkbox v-model="upForm.iscant"
-                >点击使用自定义目录</el-checkbox
+                >点击使用自定义目录 -- 功能未完善，谨慎使用！</el-checkbox
               >
               <el-input
                 :disabled="!upForm.iscant"
@@ -119,7 +119,6 @@ export default {
       localStorage.setItem("token", this.token);
       getUserInfo()
         .then((res) => {
-          console.log(res);
           this.fullscreenLoading = false;
           this.userInfo = res;
           this.$store.commit("setToken", this.token);

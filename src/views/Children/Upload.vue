@@ -14,7 +14,7 @@
           <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
         </el-upload>
       </el-col>
-      <el-col>
+      <el-col style="padding-top:20px">
         <div class="tag-group">
           <el-tag effect="dark">仓库：{{ upForm.repos }}</el-tag>
           <el-tag effect="dark" v-if="upForm.iscant"
@@ -31,30 +31,28 @@
     <el-divider></el-divider>
     <el-row>
       <el-col :span="12" class="resimg">
-        <!-- <img
-          src="https://raw.githubusercontent.com/wozuinbs/video/main/72d5794d54484061a9a499ca0636d965.png"
-          alt=""
-        /> -->
-        <el-tabs v-model="activeName" type="border-card" stretch>
-          <el-tab-pane label="github" name="first">
-            <!-- <img
-              src="https://raw.githubusercontent.com/wozuinbs/video/main/72d5794d54484061a9a499ca0636d965.png"
-              alt="" -->
-            <!-- /> -->
-            <el-image :src="resData[0]"></el-image>
-          </el-tab-pane>
-          <el-tab-pane label="jsdelivr" name="second">
-            <el-image :src="resData[1]"></el-image>
-          </el-tab-pane>
-        </el-tabs>
-      </el-col>
-      <el-col :span="12">
         <el-input v-model="resData[0]">
           <template slot="prepend">github</template>
         </el-input>
         <el-input v-model="resData[1]">
           <template slot="prepend">jsdelivr</template>
         </el-input>
+        <el-tabs v-model="activeName" type="border-card" stretch>
+          <el-tab-pane label="github预览" name="first">
+            <el-image :src="resData[0]"></el-image>
+          </el-tab-pane>
+          <el-tab-pane label="jsdelivr预览" name="second">
+            <el-image :src="resData[1]"></el-image>
+          </el-tab-pane>
+        </el-tabs>
+      </el-col>
+      <el-col :span="12">
+        <!-- <el-input v-model="resData[0]">
+          <template slot="prepend">github</template>
+        </el-input>
+        <el-input v-model="resData[1]">
+          <template slot="prepend">jsdelivr</template>
+        </el-input> -->
       </el-col>
     </el-row>
   </div>
@@ -68,13 +66,13 @@ export default {
     return {
       activeName: "first",
       fullscreenLoading: false,
-      nameType: "1",
+      nameType: "2",
       upForm: {},
       userInfo: {},
       resUrl: "",
       resData: [
-          'https://cdn.jsdelivr.net/gh/wozuinbs/video/docs/Snipaste_2021-02-02_20-44-48.png',
-          'https://cdn.jsdelivr.net/gh/wozuinbs/video/docs/Snipaste_2021-02-02_20-44-48.png'
+          // 'https://cdn.jsdelivr.net/gh/wozuinbs/video/docs/Snipaste_2021-02-02_20-44-48.png',
+          // 'https://cdn.jsdelivr.net/gh/wozuinbs/video/docs/Snipaste_2021-02-02_20-44-48.png'
           ],
     };
   },
@@ -82,6 +80,7 @@ export default {
     this.userInfo = this.$store.state.userInfo;
     this.upForm = this.$store.state.uploadInfo;
   },
+
   methods: {
     befUpload(file) {
       var reader = new FileReader();
