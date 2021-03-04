@@ -5,6 +5,7 @@
       创建一个图床仓库 --> 设置一个版本(Releases) --> 拿到github的token秘钥 -->
       在项目中配置好 --> 上传文件
     </p>
+    <em>可以理解为：创建一个仓库，拿到 token，打开项目使用</em>
     <h3>创建一个图床仓库</h3>
     <p>创库创建完成之后设置新建一个Releases</p>
     <img
@@ -66,6 +67,9 @@
       alt="img"
       style="zoom: 50%"
     />
+
+    <p>作者：<a href="https://github.com/WishMelz">WishMelz</a></p>
+    <p>仓库地址：<a href="https://github.com/WishMelz/imgurl">https://github.com/WishMelz/imgurl</a> 欢迎点赞</p>
   </div>
 </template>
 
