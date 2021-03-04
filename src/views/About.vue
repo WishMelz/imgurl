@@ -37,7 +37,7 @@ export default {
   },
   data() {
     return {
-      active: 3,
+      active: 0,
     };
   },
   methods: {
