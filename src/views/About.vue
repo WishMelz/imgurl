@@ -1,81 +1,69 @@
 <template>
   <div>
-    <h1>使用步骤</h1>
-    <p>
-      创建一个图床仓库 --> 设置一个版本(Releases) --> 拿到github的token秘钥 -->
-      在项目中配置好 --> 上传文件
-    </p>
-    <em>可以理解为：创建一个仓库，拿到 token，打开项目使用</em>
-    <h3>创建一个图床仓库</h3>
-    <p>创库创建完成之后设置新建一个Releases</p>
-    <img
-      src="https://cdn.jsdelivr.net/gh/WishMelz/file/image/repo1.png"
-      alt="img"
-      style="zoom: 50%"
-    />
-
-    <img
-      src="https://cdn.jsdelivr.net/gh/WishMelz/file/image/repo2.png"
-      alt="img"
-      style="zoom: 33%"
-    />
-
-    <p>随便输入一个版本号，回车即可！！！</p>
-
-    <h3>首先拿到TOKEN</h3>
-    <p>
-      1.打开链接
-      <a target="_blank" href="https://github.com/settings/tokens"
-        >https://github.com/settings/tokens</a
-      >
-      点击 Generate new token 按钮
-    </p>
-    <p>
-      2.在打开的 <b>New personal access token</b> 中选中"repo"和"user",如下所示
-    </p>
-    <img
-      src="https://cdn.jsdelivr.net/gh/WishMelz/file/image/getToken.png"
-      alt=""
-    />
-    <p>3.然后点击 Generate token 按钮，即可生成一个token，如下：</p>
-    <img
-      src="https://cdn.jsdelivr.net/gh/WishMelz/file/image/token.png"
-      alt=""
-    />
-    <p style="color: red"><em>​ 生成的TOKEN只会显示一次。记得保存！！</em></p>
-    <h3>使用</h3>
-    <p>先设置用户token和仓库路劲</p>
-
-    <img
-      src="https://cdn.jsdelivr.net/gh/WishMelz/file/image/set.png"
-      alt="img"
-      style="zoom: 50%"
-    />
-
-    <p>使用</p>
-
-    <img
-      src="https://cdn.jsdelivr.net/gh/WishMelz/file/image/0f0765da7cbf3fbd482134d06a13d822.png"
-      alt="img"
-      style="zoom: 50%"
-    />
-
-    <p>列表</p>
-
-    <img
-      src="https://cdn.jsdelivr.net/gh/WishMelz/file/image/4af4a12a816480b138bbd2ea27871438.png"
-      alt="img"
-      style="zoom: 50%"
-    />
-
-    <p>作者：<a href="https://github.com/WishMelz">WishMelz</a></p>
-    <p>仓库地址：<a href="https://github.com/WishMelz/imgurl">https://github.com/WishMelz/imgurl</a> 欢迎点赞</p>
+    <el-steps :active="active" finish-status="success" align-center>
+      <el-step title="第一步：创建一个GitHub仓库" description="">123</el-step>
+      <el-step title="第二步：拿到GitHub的Token">33</el-step>
+      <el-step title="第三步：使用">555</el-step>
+    </el-steps>
+    <div class="cont">
+      <Step1 v-if="active == 0"></Step1>
+      <Step2 v-if="active == 1"></Step2>
+      <Step3 v-if="active == 2"></Step3>
+      <div v-if="active == 3">
+        <h2>OK！恭喜你完成使用教程！</h2>
+        <p> <el-link href="https://github.com/WishMelz" type="primary"> 作者： WishMelz</el-link></p>
+        <p>
+          <el-link href="https://github.com/WishMelz/imgurl" type="primary"> 仓库地址： https://github.com/WishMelz/imgurl 欢迎点赞</el-link>
+          
+        </p>
+      </div>
+    </div>
+    <div style="text-align: center; padding-top: 20px">
+      <el-button type="primary" @click="next(2)">上一步</el-button>
+      <el-button type="primary" @click="next(1)">下一步</el-button>
+    </div>
   </div>
 </template>
 
 <script>
-export default {};
+import Step1 from "@/components/Step1";
+import Step2 from "@/components/Step2";
+import Step3 from "@/components/Step3";
+export default {
+  components: {
+    Step1,
+    Step2,
+    Step3,
+  },
+  data() {
+    return {
+      active: 3,
+    };
+  },
+  methods: {
+    next(type) {
+      if (type == 1) {
+        if (this.active == 3) {
+          return;
+        }
+        this.active++;
+        if (this.active == 3) {
+          this.$message.success("恭喜你完成配置");
+        }
+      } else {
+        if (this.active == 0) {
+          return;
+        }
+        this.active--;
+      }
+    },
+  },
+};
 </script>
 
 <style scoped>
+.cont {
+  text-align: center;
+  padding-top: 30px;
+}
 </style>

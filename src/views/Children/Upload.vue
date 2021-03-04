@@ -14,7 +14,7 @@
           <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
         </el-upload>
       </el-col>
-      <el-col style="padding-top:20px">
+      <el-col style="padding-top: 20px">
         <div class="tag-group">
           <el-tag effect="dark">仓库：{{ upForm.repos }}</el-tag>
           <el-tag effect="dark" v-if="upForm.iscant"
@@ -33,12 +33,21 @@
       <el-col :span="12" class="resimg">
         <el-input v-model="resData[0]">
           <template slot="prepend">github</template>
+          <template slot="append">
+            <el-button class="copy" @click="copy(resData[0])">复制</el-button>
+          </template>
         </el-input>
         <el-input v-model="resData[1]">
           <template slot="prepend">jsdelivr</template>
+          <template slot="append">
+            <el-button class="copy"  @click="copy(resData[1])">复制</el-button>
+          </template>
         </el-input>
-          <el-input v-model="resData[2]">
+        <el-input v-model="resData[2]">
           <template slot="prepend">Markdown</template>
+          <template slot="append">
+            <el-button class="copy"  @click="copy(resData[2])">复制</el-button>
+          </template>
         </el-input>
         <el-tabs v-model="activeName" type="border-card" stretch>
           <el-tab-pane label="github预览" name="first">
@@ -73,10 +82,7 @@ export default {
       upForm: {},
       userInfo: {},
       resUrl: "",
-      resData: [
-          // 'https://cdn.jsdelivr.net/gh/wozuinbs/video/docs/Snipaste_2021-02-02_20-44-48.png',
-          // 'https://cdn.jsdelivr.net/gh/wozuinbs/video/docs/Snipaste_2021-02-02_20-44-48.png'
-          ],
+      resData: [],
     };
   },
   created() {
@@ -85,6 +91,22 @@ export default {
   },
 
   methods: {
+    // 复制内容
+    copy(val) {
+      if(val == '' || !val){
+        return
+      }
+      let oInput = document.createElement("input");
+      oInput.value = val;
+      document.body.appendChild(oInput);
+      oInput.select();
+      document.execCommand("Copy");
+      this.$message({
+        message: "复制成功",
+        type: "success",
+      });
+      oInput.remove();
+    },
     befUpload(file) {
       var reader = new FileReader();
       reader.readAsDataURL(file);
@@ -126,8 +148,8 @@ export default {
         upload(urlInfo, data)
           .then((res) => {
             _this.resData[0] = res.content.download_url;
-            _this.resData[1] = `https://cdn.jsdelivr.net/gh/${_this.userInfo.login}/${_this.upForm.repos}${_this.upForm.content}/${res.content.name}`
-            _this.resData[2] = `![wishimg](https://cdn.jsdelivr.net/gh/${_this.userInfo.login}/${_this.upForm.repos}${_this.upForm.content}/${res.content.name})`
+            _this.resData[1] = `https://cdn.jsdelivr.net/gh/${_this.userInfo.login}/${_this.upForm.repos}${_this.upForm.content}/${res.content.name}`;
+            _this.resData[2] = `![wishimg](https://cdn.jsdelivr.net/gh/${_this.userInfo.login}/${_this.upForm.repos}${_this.upForm.content}/${res.content.name})`;
             _this.fullscreenLoading = false;
             _this.$message.success("上传成功");
           })
@@ -153,5 +175,8 @@ export default {
 .resimg img {
   max-width: 100%;
   max-height: 100%;
+}
+.copy {
+  cursor: pointer;
 }
 </style>

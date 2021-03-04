@@ -25,10 +25,10 @@
             <i class="el-icon-more"></i>
             <span slot="title">列表</span>
           </el-menu-item>
-           <!-- <el-menu-item index="43">
-            <i class="el-icon-setting"></i>
-            <span slot="title">导航4</span>
-          </el-menu-item> -->
+           <el-menu-item index="/">
+            <i class="el-icon-s-opportunity"></i>
+            <span slot="title">教程</span>
+          </el-menu-item>
         </el-menu>
       </el-aside>
       <el-container>
