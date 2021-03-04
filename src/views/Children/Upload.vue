@@ -37,6 +37,9 @@
         <el-input v-model="resData[1]">
           <template slot="prepend">jsdelivr</template>
         </el-input>
+          <el-input v-model="resData[2]">
+          <template slot="prepend">Markdown</template>
+        </el-input>
         <el-tabs v-model="activeName" type="border-card" stretch>
           <el-tab-pane label="github预览" name="first">
             <el-image :src="resData[0]"></el-image>
@@ -122,11 +125,9 @@ export default {
         _this.fullscreenLoading = true;
         upload(urlInfo, data)
           .then((res) => {
-            console.log(res);
-            console.log(_this.userInfo);
-            console.log(_this.upForm);
             _this.resData[0] = res.content.download_url;
             _this.resData[1] = `https://cdn.jsdelivr.net/gh/${_this.userInfo.login}/${_this.upForm.repos}${_this.upForm.content}/${res.content.name}`
+            _this.resData[2] = `![wishimg](https://cdn.jsdelivr.net/gh/${_this.userInfo.login}/${_this.upForm.repos}${_this.upForm.content}/${res.content.name})`
             _this.fullscreenLoading = false;
             _this.$message.success("上传成功");
           })

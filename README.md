@@ -46,8 +46,11 @@ npm run build   打包
 
 使用
 
-<img src="https://cdn.jsdelivr.net/gh/WishMelz/file/image/use.png" alt="img" style="zoom:50%;" />
+<img src="https://cdn.jsdelivr.net/gh/WishMelz/file/image/0f0765da7cbf3fbd482134d06a13d822.png" alt="img" style="zoom:50%;" />
+
+列表
+
+<img src="https://cdn.jsdelivr.net/gh/WishMelz/file/image/4af4a12a816480b138bbd2ea27871438.png" alt="img" style="zoom:50%;" />
 
 
 
-项目开发阶段，bug居多。只完成基础上传功能。列表页面未开发！

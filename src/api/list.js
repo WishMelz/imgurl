@@ -1,7 +1,7 @@
 import request from '@/axios.js'
 
 
-// 获取列表-- 1k 以内   https://api.github.com/repos/wozuinbs/video/contents/mini
+// 获取列表-- 1k 以内  
 export function getFileList (name,repo,folder) {
     return request({
         url: `/repos/${name}/${repo}/contents/${folder}`,
@@ -14,5 +14,15 @@ export function getFileListAll (name) {
     return request({
         url: `/users/${name}/repos`,
         method: 'get'
+    })
+}
+
+
+// 删除文件
+export function delFile (name,repo,file,data) {
+    return request({
+        url: `/repos/${name}/${repo}/contents/${file}`,
+        method: 'delete',
+        data
     })
 }
