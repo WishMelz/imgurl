@@ -2,24 +2,39 @@ import request from '@/axios.js'
 
 
 // 获取列表-- 1k 以内  
-export function getFileList (name,repo,folder) {
+export function getFileList(name, repo, folder) {
     return request({
         url: `/repos/${name}/${repo}/contents/${folder}`,
         method: 'get'
     })
 }
 
-// 获取列表-- 超出1k的情况下
-export function getFileListAll (name) {
+
+
+// 删除文件
+export function delFile(name, repo, file, data) {
     return request({
-        url: `/users/${name}/repos`,
-        method: 'get'
+        url: `/repos/${name}/${repo}/contents/${file}`,
+        method: 'delete',
+        data
     })
 }
 
 
-// 删除文件
-export function delFile (name,repo,file,data) {
+// 获取列表-- 超出1k的情况下
+export function getFileListSha(name, repos, sha) {
+    return request({
+        url: `/repos/${name}/${repos}/git/trees/${sha}`,
+        method: 'get'
+    })
+}
+
+// 删除文件-- 超出1k的情况下
+/**
+ * 
+ * @param {请求体} data   {message：'delete',sha:"sha"}
+ */
+export function delFileSha(name, repo, file, data) {
     return request({
         url: `/repos/${name}/${repo}/contents/${file}`,
         method: 'delete',

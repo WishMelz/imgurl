@@ -22,6 +22,7 @@
           <el-menu-item index="list">
             <i class="el-icon-more"></i>
             <span slot="title">列表</span>
+            
           </el-menu-item>
           <el-menu-item index="/">
             <i class="el-icon-s-opportunity"></i>
@@ -31,9 +32,9 @@
       </el-aside>
       <el-container>
         <el-main>
-          <keep-alive>
+          <!-- <keep-alive> -->
             <router-view />
-          </keep-alive>
+          <!-- </keep-alive> -->
         </el-main>
         <el-footer></el-footer>
       </el-container>

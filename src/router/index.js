@@ -23,7 +23,7 @@ const routes = [
         name: "user",
         component: () => import('@/views/Children/User'),
         meta: {
-          keepAlive: true
+          keepAlive: false
         }
       },
       {
@@ -31,7 +31,7 @@ const routes = [
         name: "upload",
         component: () => import('@/views/Children/Upload'),
         meta: {
-          keepAlive: true
+          keepAlive: false
         }
       },
       {
@@ -39,7 +39,7 @@ const routes = [
         name: "list",
         component: () => import('@/views/Children/List'),
         meta: {
-          keepAlive: true
+          keepAlive: false
         }
       }
     ]

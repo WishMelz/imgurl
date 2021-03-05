@@ -105,6 +105,7 @@ export default {
     },
     // 获取目录
     selectRepos(v) {
+      if(!v) return;
       this.fullscreenLoading = true;
       this.upForm.content = "";
       getReposContents(this.userInfo.login, v)
@@ -128,7 +129,7 @@ export default {
     },
     // 搜索按钮
     getList() {
-      if (this.upForm.repos == "" || this.upForm.content == "") {
+      if (this.userInfo.login == '' || this.upForm.repos == "" || this.upForm.content == "" || !this.userInfo.login || !this.upForm.repos || !this.upForm.content ) {
         this.$message.info("请选择仓库和目录");
         return;
       }

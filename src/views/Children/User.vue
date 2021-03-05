@@ -68,7 +68,9 @@
               </span>
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" @click="setUploadInfo">确认设置</el-button>
+              <el-button type="primary" @click="setUploadInfo"
+                >确认设置</el-button
+              >
             </el-form-item>
           </el-form>
         </div>
@@ -103,15 +105,15 @@ export default {
     if (this.userInfo.login) {
       this.getRepos(this.userInfo.login);
     }
-    if(this.upForm.repos != ''){
-        this.selectRepos(this.upForm.repos)
+    if (this.upForm.repos != "" && this.upForm.repos) {
+      this.selectRepos(this.upForm.repos);
     }
   },
   methods: {
     //   确定仓库路劲
-    setUploadInfo(){
-          this.$store.commit("setUploadInfo", this.upForm);
-          this.$message.success('设置成功')
+    setUploadInfo() {
+      this.$store.commit("setUploadInfo", this.upForm);
+      this.$message.success("设置成功");
     },
     // 获取用户信息
     searchUser() {
@@ -119,6 +121,13 @@ export default {
       localStorage.setItem("token", this.token);
       getUserInfo()
         .then((res) => {
+          this.upForm = {
+            iscant: false,
+            repos: "",
+            content: "",
+            delimit: "",
+          };
+          this.$store.commit("setUploadInfo", {});
           this.fullscreenLoading = false;
           this.userInfo = res;
           this.$store.commit("setToken", this.token);
