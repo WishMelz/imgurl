@@ -1,8 +1,6 @@
 <template>
   <el-container>
-    <el-header>
-      
-    </el-header>
+    <el-header> </el-header>
     <el-container>
       <el-aside width="200px">
         <el-menu
@@ -17,15 +15,15 @@
             <i class="el-icon-setting"></i>
             <span slot="title">配置</span>
           </el-menu-item>
-           <el-menu-item index="upload">
+          <el-menu-item index="upload">
             <i class="el-icon-upload"></i>
             <span slot="title">上传</span>
           </el-menu-item>
-           <el-menu-item index="list">
+          <el-menu-item index="list">
             <i class="el-icon-more"></i>
             <span slot="title">列表</span>
           </el-menu-item>
-           <el-menu-item index="/">
+          <el-menu-item index="/">
             <i class="el-icon-s-opportunity"></i>
             <span slot="title">教程</span>
           </el-menu-item>
@@ -33,7 +31,9 @@
       </el-aside>
       <el-container>
         <el-main>
-            <router-view/>
+          <keep-alive>
+            <router-view />
+          </keep-alive>
         </el-main>
         <el-footer></el-footer>
       </el-container>
@@ -53,6 +53,6 @@ section {
   background: #555c63;
 }
 .el-header {
-   background: #555c63;
+  background: #555c63;
 }
 </style>

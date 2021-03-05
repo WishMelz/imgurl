@@ -30,41 +30,33 @@
     </el-row>
     <el-divider></el-divider>
     <el-row>
-      <el-col :span="12" class="resimg">
+      <el-col :span="16" class="resimg">
         <el-input v-model="resData[0]">
-          <template slot="prepend">github</template>
+          <template slot="prepend">GitHub</template>
           <template slot="append">
             <el-button class="copy" @click="copy(resData[0])">复制</el-button>
           </template>
         </el-input>
         <el-input v-model="resData[1]">
-          <template slot="prepend">jsdelivr</template>
+          <template slot="prepend">jsDelivr</template>
           <template slot="append">
-            <el-button class="copy"  @click="copy(resData[1])">复制</el-button>
+            <el-button class="copy" @click="copy(resData[1])">复制</el-button>
           </template>
         </el-input>
         <el-input v-model="resData[2]">
           <template slot="prepend">Markdown</template>
           <template slot="append">
-            <el-button class="copy"  @click="copy(resData[2])">复制</el-button>
+            <el-button class="copy" @click="copy(resData[2])">复制</el-button>
           </template>
         </el-input>
         <el-tabs v-model="activeName" type="border-card" stretch>
-          <el-tab-pane label="github预览" name="first">
+          <el-tab-pane class="imgbox" label="GitHub预览" name="first">
             <el-image :src="resData[0]"></el-image>
           </el-tab-pane>
-          <el-tab-pane label="jsdelivr预览" name="second">
+          <el-tab-pane class="imgbox" label="jsDelivr预览" name="second">
             <el-image :src="resData[1]"></el-image>
           </el-tab-pane>
         </el-tabs>
-      </el-col>
-      <el-col :span="12">
-        <!-- <el-input v-model="resData[0]">
-          <template slot="prepend">github</template>
-        </el-input>
-        <el-input v-model="resData[1]">
-          <template slot="prepend">jsdelivr</template>
-        </el-input> -->
       </el-col>
     </el-row>
   </div>
@@ -89,12 +81,48 @@ export default {
     this.userInfo = this.$store.state.userInfo;
     this.upForm = this.$store.state.uploadInfo;
   },
-
+  mounted() {
+    let _this = this;
+    document.addEventListener("paste", function (event) {
+      var isChrome = false;
+      if (event.clipboardData || event.originalEvent) {
+        //某些chrome版本使用的是event.originalEvent
+        var clipboardData =
+          event.clipboardData || event.originalEvent.clipboardData;
+        if (clipboardData.items) {
+          // for chrome
+          var items = clipboardData.items,
+            len = items.length,
+            blob = null;
+          isChrome = true;
+          for (var i = 0; i < len; i++) {
+            if (items[i].type.indexOf("image") !== -1) {
+              //getAsFile() 此方法只是living standard firefox ie11 并不支持
+              blob = items[i].getAsFile();
+            }
+          }
+          if (blob !== null) {
+            var reader = new FileReader();
+            reader.readAsDataURL(blob);
+            //base64码显示
+            reader.onload = function (event) {
+              // event.target.result 即为图片的Base64编码字符串
+              var base64_str = event.target.result;
+              _this.postUploadApi(
+                md5(Math.random()) + ".png",
+                base64_str.split(",")[1]
+              );
+            };
+          }
+        }
+      }
+    });
+  },
   methods: {
     // 复制内容
     copy(val) {
-      if(val == '' || !val){
-        return
+      if (val == "" || !val) {
+        return;
       }
       let oInput = document.createElement("input");
       oInput.value = val;
@@ -110,6 +138,14 @@ export default {
     befUpload(file) {
       var reader = new FileReader();
       reader.readAsDataURL(file);
+      let _this = this;
+      reader.onload = function () {
+        _this.postUploadApi(file.name, reader.result.split(",")[1]);
+      };
+      return false;
+    },
+    postUploadApi(name, base64) {
+      let _this = this;
       let urlInfo = {};
       // 判断是否自定义路劲
       if (!this.upForm.iscant) {
@@ -125,40 +161,36 @@ export default {
           cont: this.upForm.delimit,
         };
       }
-      let file_last = file.name.replace(/.+\./, "");
+      let file_last = name.replace(/.+\./, "");
       //   判断文件名加密方式
       let fileName = "";
       if (this.nameType == "1") {
-        fileName = file.name;
+        fileName = name;
       } else {
-        fileName = md5(Math.random() + file.name) + "." + file_last;
+        fileName = md5(Math.random() + name) + "." + file_last;
       }
       if (urlInfo.cont == "/") {
         urlInfo.fileName = fileName;
       } else {
         urlInfo.fileName = "/" + fileName;
       }
-      let _this = this;
-      reader.onload = function () {
-        let data = {
-          message: "Upload pictures via wishmelz-imgurl",
-          content: reader.result.split(",")[1],
-        };
-        _this.fullscreenLoading = true;
-        upload(urlInfo, data)
-          .then((res) => {
-            _this.resData[0] = res.content.download_url;
-            _this.resData[1] = `https://cdn.jsdelivr.net/gh/${_this.userInfo.login}/${_this.upForm.repos}${_this.upForm.content}/${res.content.name}`;
-            _this.resData[2] = `![wishimg](https://cdn.jsdelivr.net/gh/${_this.userInfo.login}/${_this.upForm.repos}${_this.upForm.content}/${res.content.name})`;
-            _this.fullscreenLoading = false;
-            _this.$message.success("上传成功");
-          })
-          .catch((err) => {
-            console.log(err);
-            _this.fullscreenLoading = false;
-          });
+      _this.fullscreenLoading = true;
+      let data = {
+        message: "Upload pictures via wishmelz-imgurl",
+        content: base64,
       };
-      return false;
+      upload(urlInfo, data)
+        .then((res) => {
+          _this.resData[0] = res.content.download_url;
+          _this.resData[1] = `https://cdn.jsdelivr.net/gh/${_this.userInfo.login}/${_this.upForm.repos}${_this.upForm.content}/${res.content.name}`;
+          _this.resData[2] = `![wishimg](https://cdn.jsdelivr.net/gh/${_this.userInfo.login}/${_this.upForm.repos}${_this.upForm.content}/${res.content.name})`;
+          _this.fullscreenLoading = false;
+          _this.$message.success("上传成功");
+        })
+        .catch((err) => {
+          console.log(err);
+          _this.fullscreenLoading = false;
+        });
     },
   },
 };
@@ -178,5 +210,8 @@ export default {
 }
 .copy {
   cursor: pointer;
+}
+.imgbox {
+  text-align: center;
 }
 </style>

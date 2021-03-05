@@ -12,30 +12,45 @@ const routes = [
     children: [
       {
         path: "/",
-        name:"about",
-        component:()=>import('@/views/About')
+        name: "about",
+        component: () => import('@/views/About'),
+        meta: {
+          keepAlive: true
+        }
       },
       {
         path: "/user",
-        name:"user",
-        component:()=>import('@/views/Children/User')
+        name: "user",
+        component: () => import('@/views/Children/User'),
+        meta: {
+          keepAlive: true
+        }
       },
       {
         path: "/upload",
-        name:"upload",
-        component:()=>import('@/views/Children/Upload')
+        name: "upload",
+        component: () => import('@/views/Children/Upload'),
+        meta: {
+          keepAlive: true
+        }
       },
       {
         path: "/list",
-        name:"list",
-        component:()=>import('@/views/Children/List')
+        name: "list",
+        component: () => import('@/views/Children/List'),
+        meta: {
+          keepAlive: true
+        }
       }
     ]
   },
   {
     path: '/about',
     name: 'About',
-    component: () => import(/* webpackChunkName: "about" */ '../views/About.vue')
+    component: () => import('@/views/About.vue'),
+    meta: {
+      keepAlive: true
+    }
   }
 ]
 
