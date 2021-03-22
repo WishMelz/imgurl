@@ -12,9 +12,9 @@
     <p>使用</p>
 
     <img
-      src="https://cdn.jsdelivr.net/gh/WishMelz/file/image/0f0765da7cbf3fbd482134d06a13d822.png"
+      src="https://cdn.jsdelivr.net/gh/WishMelz/file/image/64e06b5e7fe3cc030851e3e5d3b708a7.png"
       alt="img"
-      style="zoom: 50%"
+      style="zoom: 20%"
     />
 
     <p>列表</p>

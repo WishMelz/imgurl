@@ -1,6 +1,6 @@
 <template>
   <el-container>
-    <el-header> </el-header>
+    <el-header style=""> </el-header>
     <el-container>
       <el-aside width="200px">
         <el-menu
@@ -22,18 +22,20 @@
           <el-menu-item index="list">
             <i class="el-icon-more"></i>
             <span slot="title">列表</span>
-            
           </el-menu-item>
           <el-menu-item index="/">
             <i class="el-icon-s-opportunity"></i>
             <span slot="title">教程</span>
+          </el-menu-item>
+          <el-menu-item>
+            <el-button @click="closeToken" type="primary" size="mini">清除TOKEN</el-button>
           </el-menu-item>
         </el-menu>
       </el-aside>
       <el-container>
         <el-main>
           <!-- <keep-alive> -->
-            <router-view />
+          <router-view />
           <!-- </keep-alive> -->
         </el-main>
         <el-footer></el-footer>
@@ -43,7 +45,14 @@
 </template>
 
 <script>
-export default {};
+export default {
+  methods:{
+    closeToken(){
+      localStorage.clear();
+      location.href = '/'
+    }
+  }
+};
 </script>
 
 <style>

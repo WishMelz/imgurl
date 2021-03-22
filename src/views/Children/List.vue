@@ -40,7 +40,8 @@
             <i class="el-icon-delete"></i>
           </div>
           <el-image
-            style="width: 200px; height: 200px"
+            @click="opDia(imgurl + v.path)"
+            style="width: 200px; height: 200px; cursor: pointer"
             :src="isjsDeliver ? imgurl + v.path : v.download_url"
             fit="cover"
           ></el-image>
@@ -53,6 +54,12 @@
         </div>
       </el-col>
     </el-row>
+    <div class="dialog" v-if="dialogTableVisible">
+      <div class="dialog-close">
+        <i @click="diaClose" class="el-icon-circle-close"></i>
+      </div>
+      <el-image @click="diaClose" :src="dialogUrl" fit="cover"></el-image>
+    </div>
   </div>
 </template>
 
@@ -62,7 +69,9 @@ import { getFileList, delFile } from "@/api/list";
 export default {
   data() {
     return {
+      dialogTableVisible: false,
       fullscreenLoading: false,
+      dialogUrl: "",
       repoData: {},
       userInfo: {},
       reposList: [],
@@ -82,6 +91,14 @@ export default {
     this.defSelect();
   },
   methods: {
+    opDia(v) {
+      this.dialogTableVisible = true;
+      this.dialogUrl = v;
+    },
+    diaClose() {
+      this.dialogTableVisible = false;
+      this.dialogUrl = "";
+    },
     // 默认选中操作
     defSelect() {
       this.getRepos(this.userInfo.login);
@@ -105,7 +122,7 @@ export default {
     },
     // 获取目录
     selectRepos(v) {
-      if(!v) return;
+      if (!v) return;
       this.fullscreenLoading = true;
       this.upForm.content = "";
       getReposContents(this.userInfo.login, v)
@@ -129,7 +146,14 @@ export default {
     },
     // 搜索按钮
     getList() {
-      if (this.userInfo.login == '' || this.upForm.repos == "" || this.upForm.content == "" || !this.userInfo.login || !this.upForm.repos || !this.upForm.content ) {
+      if (
+        this.userInfo.login == "" ||
+        this.upForm.repos == "" ||
+        this.upForm.content == "" ||
+        !this.userInfo.login ||
+        !this.upForm.repos ||
+        !this.upForm.content
+      ) {
         this.$message.info("请选择仓库和目录");
         return;
       }
@@ -224,5 +248,28 @@ export default {
 }
 .item:hover .del {
   display: block;
+}
+.dialog {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.7);
+}
+.dialog img {
+  /* max-width: 100%; */
+  /* max-height: 100%; */
+}
+.dialog-close {
+  font-size: 40px;
+  position: absolute;
+  top: 20px;
+  right: 20px;
+}
+.el-icon-circle-close {
+  cursor: pointer;
 }
 </style>

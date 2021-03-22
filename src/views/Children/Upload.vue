@@ -12,6 +12,7 @@
         >
           <i class="el-icon-upload"></i>
           <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
+          <div class="el-upload__text"><b>支持 ctrl + v 上传</b></div>
         </el-upload>
       </el-col>
       <el-col style="padding-top: 20px">
