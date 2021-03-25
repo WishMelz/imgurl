@@ -1,6 +1,6 @@
 # imgurl
 
-基于github的图片管理系统/免费 https://wishmelz.github.io/imgurl       https://imgurl.icu
+基于github的图片管理系统/免费 https://wishmelz.github.io/imgurl | https://imgurl.icu
 
 使用github-Api 上传到仓库。在使用jsDelivr加载图片。
 
