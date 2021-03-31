@@ -11,7 +11,8 @@ export default new Vuex.Store({
       iscant: false,
       repos: "",
       content: "",
-      delimit: ""
+      delimit: "",
+      branch:""
     }
   },
   mutations: {

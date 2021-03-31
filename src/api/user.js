@@ -25,3 +25,11 @@ export function getReposContents (name,repos) {
         method: 'get'
     })
 }
+
+// 获取仓库默认分支
+export function getReposBranch (name,repos) {
+    return request({
+        url: `/repos/${name}/${repos}`,
+        method: 'get'
+    })
+}

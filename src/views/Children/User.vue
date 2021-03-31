@@ -80,7 +80,12 @@
 </template>
 
 <script>
-import { getUserInfo, getUserRepos, getReposContents } from "@/api/user";
+import {
+  getUserInfo,
+  getUserRepos,
+  getReposContents,
+  getReposBranch,
+} from "@/api/user";
 export default {
   data() {
     return {
@@ -94,6 +99,7 @@ export default {
         repos: "",
         content: "",
         delimit: "",
+        branch: "",
       },
     };
   },
@@ -126,6 +132,7 @@ export default {
             repos: "",
             content: "",
             delimit: "",
+            branch: "",
           };
           this.$store.commit("setUploadInfo", {});
           this.fullscreenLoading = false;
@@ -151,6 +158,10 @@ export default {
     },
     // 获取目录
     selectRepos(v) {
+      //拿到默认分支
+      getReposBranch(this.userInfo.login, v).then((res) => {
+        this.upForm.branch = res.default_branch;
+      });
       getReposContents(this.userInfo.login, v)
         .then((res) => {
           let data = [

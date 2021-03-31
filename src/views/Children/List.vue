@@ -105,6 +105,9 @@ export default {
       this.selectRepos(this.$store.state.uploadInfo.repos);
       this.upForm.repos = this.$store.state.uploadInfo.repos;
       this.upForm.content = this.$store.state.uploadInfo.content;
+      if(this.$store.state.uploadInfo.iscant){
+         this.upForm.content = this.$store.state.uploadInfo.delimit;
+      }
       this.getList();
     },
     // 获取用户仓库

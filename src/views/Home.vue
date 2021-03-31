@@ -27,8 +27,18 @@
             <i class="el-icon-s-opportunity"></i>
             <span slot="title">教程</span>
           </el-menu-item>
-          <el-menu-item>
-            <el-button @click="closeToken" type="primary" size="mini">清除TOKEN</el-button>
+          <el-menu-item @click="closeToken">
+            清除Token
+            <!-- <el-button @click="closeToken" type="primary" size="mini"
+              ></el-button
+            > -->
+          </el-menu-item>
+          <el-menu-item @click="goGithub">
+              <el-avatar
+                :size="30"
+                src="https://avatars.githubusercontent.com/u/46024400?v=4"
+              ></el-avatar>
+              <span class="link">WishMelz</span>
           </el-menu-item>
         </el-menu>
       </el-aside>
@@ -46,12 +56,15 @@
 
 <script>
 export default {
-  methods:{
-    closeToken(){
+  methods: {
+    closeToken() {
       localStorage.clear();
-      location.href = '/'
+      location.href = "/";
+    },
+    goGithub(){
+      location.href = "https://github.com/WishMelz";
     }
-  }
+  },
 };
 </script>
 
@@ -64,5 +77,10 @@ section {
 }
 .el-header {
   background: #555c63;
+}
+.link {
+  font-size: 14px;
+  font-weight: bold;
+  padding-left: 5px;
 }
 </style>

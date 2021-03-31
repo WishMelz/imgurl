@@ -183,8 +183,14 @@ export default {
       upload(urlInfo, data)
         .then((res) => {
           _this.resData[0] = res.content.download_url;
-          _this.resData[1] = `https://cdn.jsdelivr.net/gh/${_this.userInfo.login}/${_this.upForm.repos}${_this.upForm.content}/${res.content.name}`;
-          _this.resData[2] = `![wishimg](https://cdn.jsdelivr.net/gh/${_this.userInfo.login}/${_this.upForm.repos}${_this.upForm.content}/${res.content.name})`;
+          if (_this.upForm.iscant) {
+            _this.resData[1] = `https://cdn.jsdelivr.net/gh/${_this.userInfo.login}/${_this.upForm.repos}@${_this.upForm.branch}${_this.upForm.delimit}/${res.content.name}`;
+          _this.resData[2] = `![wishimg](https://cdn.jsdelivr.net/gh/${_this.userInfo.login}/${_this.upForm.repos}@${_this.upForm.branch}${_this.upForm.delimit}/${res.content.name})`;
+          } else {
+            _this.resData[1] = `https://cdn.jsdelivr.net/gh/${_this.userInfo.login}/${_this.upForm.repos}@${_this.upForm.branch}${_this.upForm.content}/${res.content.name}`;
+            _this.resData[2] = `![wishimg](https://cdn.jsdelivr.net/gh/${_this.userInfo.login}/${_this.upForm.repos}@${_this.upForm.branch}${_this.upForm.content}/${res.content.name})`;
+          }
+
           _this.fullscreenLoading = false;
           _this.$message.success("上传成功");
         })
