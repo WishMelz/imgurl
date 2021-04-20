@@ -59,7 +59,7 @@ export default {
   methods: {
     closeToken() {
       localStorage.clear();
-      location.href = "/";
+      this.$router.push('/')
     },
     goGithub(){
       location.href = "https://github.com/WishMelz";

@@ -48,7 +48,7 @@
             </el-form-item>
             <el-form-item label="自定义目录">
               <el-checkbox v-model="upForm.iscant"
-                >点击使用自定义目录 -- 功能未完善，谨慎使用！</el-checkbox
+                >点击使用自定义目录 -- 功能在实验阶段!  例子: /xxx  在使用自定义的时候,仓库目前是没有目录的,这个时候去列表页面会报错</el-checkbox
               >
               <el-input
                 :disabled="!upForm.iscant"
