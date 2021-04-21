@@ -3,6 +3,15 @@
     <el-header style=""> </el-header>
     <el-container>
       <el-aside width="200px">
+        <a target="_black" href="https://github.com/WishMelz">
+          <div class="avarat">
+            <img
+              src="https://avatars.githubusercontent.com/u/46024400?v=4"
+              alt=""
+            />
+            <span>WishMelz</span>
+          </div>
+        </a>
         <el-menu
           default-active="2"
           class="el-menu-vertical-demo"
@@ -28,17 +37,12 @@
             <span slot="title">教程</span>
           </el-menu-item>
           <el-menu-item @click="closeToken">
-            清除Token
+            <i class="el-icon-error"></i>
+             <span slot="title">清除Token(退出)</span>
+            
             <!-- <el-button @click="closeToken" type="primary" size="mini"
               ></el-button
             > -->
-          </el-menu-item>
-          <el-menu-item @click="goGithub">
-              <el-avatar
-                :size="30"
-                src="https://avatars.githubusercontent.com/u/46024400?v=4"
-              ></el-avatar>
-              <span class="link">WishMelz</span>
           </el-menu-item>
         </el-menu>
       </el-aside>
@@ -59,11 +63,11 @@ export default {
   methods: {
     closeToken() {
       localStorage.clear();
-      this.$router.push('/')
+      this.$router.push("/");
     },
-    goGithub(){
-      location.href = "https://github.com/WishMelz";
-    }
+    goGithub() {
+      location.href = "";
+    },
   },
 };
 </script>
@@ -74,6 +78,7 @@ section {
 }
 .el-aside {
   background: #555c63;
+  position: relative;
 }
 .el-header {
   background: #555c63;
@@ -82,5 +87,25 @@ section {
   font-size: 14px;
   font-weight: bold;
   padding-left: 5px;
+}
+.avarat {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.avarat img {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+.avarat span {
+  color: #fff;
+  font-weight: bold;
+  font-size: 14px;
 }
 </style>
