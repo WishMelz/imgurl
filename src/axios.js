@@ -20,18 +20,8 @@ const service = axios.create({
   baseURL: 'https://api.github.com',
   timeout: 50000 // 请求超时时间
 })
-
-// 接口 URL 前缀
-// service.defaults.baseURL = '';
-
-
-// "Content-Type": "application/json",
-// "Authorization": `token ${this.userConfigInfo.token}`
-// }
 // 请求拦截
 service.interceptors.request.use(config => {
-  // this.$store.state.token
-  // config.headers.Authorization = `token 48b3f0edc2a7bdb352ae6cd4b39aadfc26495597`;
   let token = localStorage.getItem('token')
   config.headers.Authorization = `token ${token}`;
   return config;
@@ -54,27 +44,6 @@ service.interceptors.response.use(
                   // [ 示例 ] code === 0 代表没有错误
                   return dataAxios.data
               case 400:
-                  // 未登录[ 示例 ] 其它和后台约定的 code
-                  errorCreate(`[ code: 400 - 系统异常 ] ${dataAxios.msg}: ${response.config.url}`)
-                  //   errorLog(dataAxios.err)
-                  break
-              case 2001:
-                  // 登录成功
-                  localStorage.setItem('blogToken', dataAxios.data.token);
-                  router.push('/back')
-                  return true
-              case 2002:
-                  localStorage.removeItem('blogToken')
-                  return false
-              case 2003:
-                  // 未登录[ 示例 ] 其它和后台约定的 code  token 错误
-                  router.push('/login')
-                  errorCreate(`[ code: 2003 - 登录过期 ] ${dataAxios.msg}: ${response.config.url}`)
-                  break
-              case 2004:
-                  // 文章 没有
-                  router.push('/404')
-                  // errorCreate(`[ code: 2004 - 文章错误 ] ${dataAxios.msg}: ${response.config.url}`)
                   break
               default:
                   // 不是正确的 code
