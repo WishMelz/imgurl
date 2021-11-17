@@ -190,7 +190,6 @@ export default {
 
 <style>
 table {
-  /* margin: 0 auto; */
   margin-top: 30px;
 }
 table td {

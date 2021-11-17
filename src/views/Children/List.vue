@@ -59,7 +59,6 @@
         <i @click="diaClose" class="el-icon-circle-close"></i>
       </div>
       <img class="diaimg" @click="diaClose" :src="dialogUrl" />
-      <!-- <el-image @click="diaClose" :src="dialogUrl" ></el-image> -->
     </div>
   </div>
 </template>
@@ -263,10 +262,6 @@ export default {
   place-items: center;
   background: rgba(0, 0, 0, 0.7);
 }
-.dialog img {
-  /* max-width: 100%; */
-  /* max-height: 100%; */
-}
 .dialog-close {
   font-size: 40px;
   position: absolute;
@@ -277,7 +272,6 @@ export default {
   cursor: pointer;
 }
 .diaimg {
-  /* max-width: 80%; */
   max-height:100vh
 }
 </style>

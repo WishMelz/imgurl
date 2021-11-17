@@ -39,10 +39,6 @@
           <el-menu-item @click="closeToken">
             <i class="el-icon-error"></i>
              <span slot="title">清除Token(退出)</span>
-            
-            <!-- <el-button @click="closeToken" type="primary" size="mini"
-              ></el-button
-            > -->
           </el-menu-item>
         </el-menu>
       </el-aside>
