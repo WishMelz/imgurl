@@ -22,7 +22,12 @@
             >目录：{{ upForm.delimit }}</el-tag
           >
           <el-tag effect="dark" v-else>目录：{{ upForm.content }}</el-tag>
+           <el-input @input='signInput' placeholder="请输入签名" size='mini'  style="width:250px" v-model="sign">
+              <template slot="prepend">签名</template>
+           </el-input>
+           <span style="vertical-align: sub;font-size:10px;font-style: italic;">签名就是 <b>![]</b> 中的字</span>
         </div>
+       
       </el-col>
       <el-col style="padding-top: 30px">
         <el-radio v-model="nameType" label="1">使用源文件名字</el-radio>
@@ -76,12 +81,15 @@ export default {
       userInfo: {},
       resUrl: "",
       resData: [],
+      sign:"wishimg"
     };
   },
   created() {
     this.userInfo = this.$store.state.userInfo;
     this.upForm = this.$store.state.uploadInfo;
+    this.sign = this.$store.state.sign;
   },
+
   mounted() {
     let _this = this;
     document.addEventListener("paste", function (event) {
@@ -120,6 +128,10 @@ export default {
     });
   },
   methods: {
+    //签名
+    signInput(v){
+       this.$store.commit("setSign", v);
+    },
     // 复制内容
     copy(val) {
       if (val == "" || !val) {
@@ -185,10 +197,10 @@ export default {
           _this.resData[0] = res.content.download_url;
           if (_this.upForm.iscant) {
             _this.resData[1] = `https://cdn.jsdelivr.net/gh/${_this.userInfo.login}/${_this.upForm.repos}@${_this.upForm.branch}${_this.upForm.delimit}/${res.content.name}`;
-          _this.resData[2] = `![wishimg](https://cdn.jsdelivr.net/gh/${_this.userInfo.login}/${_this.upForm.repos}@${_this.upForm.branch}${_this.upForm.delimit}/${res.content.name})`;
+          _this.resData[2] = `![${this.sign}](https://cdn.jsdelivr.net/gh/${_this.userInfo.login}/${_this.upForm.repos}@${_this.upForm.branch}${_this.upForm.delimit}/${res.content.name})`;
           } else {
             _this.resData[1] = `https://cdn.jsdelivr.net/gh/${_this.userInfo.login}/${_this.upForm.repos}@${_this.upForm.branch}${_this.upForm.content}/${res.content.name}`;
-            _this.resData[2] = `![wishimg](https://cdn.jsdelivr.net/gh/${_this.userInfo.login}/${_this.upForm.repos}@${_this.upForm.branch}${_this.upForm.content}/${res.content.name})`;
+            _this.resData[2] = `![${this.sign}](https://cdn.jsdelivr.net/gh/${_this.userInfo.login}/${_this.upForm.repos}@${_this.upForm.branch}${_this.upForm.content}/${res.content.name})`;
           }
 
           _this.fullscreenLoading = false;

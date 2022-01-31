@@ -13,7 +13,8 @@ export default new Vuex.Store({
       content: "",
       delimit: "",
       branch:""
-    }
+    },
+    sign:"wishimg"
   },
   mutations: {
     setToken(state, v) {
@@ -24,6 +25,9 @@ export default new Vuex.Store({
     },
     setUploadInfo(state, v) {
       state.uploadInfo = v;
+    },
+    setSign(state,v){
+      state.sign = v;
     }
   },
   actions: {
