@@ -83,11 +83,13 @@ export default {
       },
       imgurl: "",
       isjsDeliver: false,
+      sign:""
     };
   },
   created() {
     this.repoData = this.$store.state.uploadInfo;
     this.userInfo = this.$store.state.userInfo;
+     this.sign = this.$store.state.sign;
     this.defSelect();
   },
   methods: {
@@ -179,7 +181,7 @@ export default {
       if (type == 1) {
         copyCont = val;
       } else {
-        copyCont = `![wishimg](${val})`;
+        copyCont = `![${this.sign}](${val})`;
       }
       let oInput = document.createElement("input");
       oInput.value = copyCont;
