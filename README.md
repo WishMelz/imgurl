@@ -8,7 +8,7 @@
 
 #### 另外一个TG图床 https://github.com/WishMelz/tFile 白嫖电报 `https://telegra.ph` 的图床以及视频床,真正意义的白嫖.
 
-#### 免费文件储存 https://github.com/WishMelz/gFile 基于 `gofile.io` .
+#### 免费文件储存 https://github.com/WishMelz/gFile 基于 `gofile.io` 即开即用.
 
 ## 项目启动
 
