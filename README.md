@@ -60,6 +60,5 @@ npm run build   打包
 
 ## 欢迎提交 Issues 改进项目。
 
-## 交流群（QQ里面更新二维码）
-<img src="https://cdn.jsdelivr.net/gh/WishMelz/file/image/qqer.jpg" alt="img" style="width:200px" />
+
 
