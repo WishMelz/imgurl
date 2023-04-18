@@ -63,5 +63,6 @@ npm run build   打包
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=MinXie1209/metrics,WishMelz/imgurl&type=Date)](https://star-history.com/#MinXie1209/metrics&WishMelz/imgurl&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=WishMelz/imgurl&type=Date)](https://star-history.com/#WishMelz/imgurl&Date)
+
 
