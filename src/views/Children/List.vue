@@ -1,7 +1,7 @@
 <template>
   <div v-loading.fullscreen.lock="fullscreenLoading">
     <el-row>
-      <el-col>
+      <el-col >
         <el-select
           v-model="upForm.repos"
           placeholder="请选择仓库"
@@ -24,14 +24,17 @@
           >
           </el-option>
         </el-select>
-        <el-button @click="getList">获取列表</el-button>
+        <el-button @click="getList" type="primary">获取列表</el-button>
       </el-col>
     </el-row>
     <el-row style="padding-top: 20px">
       <el-col class="imgerr">
-        图片加载不出来？
-        <el-button @click="isjsDeliver = !isjsDeliver"
-          >切换外链接格式</el-button
+        
+        <!-- <span>图片加载不出来？</span> -->
+        <el-tag type="success">BaseUrl：{{ isjsDeliver ? 'jsDeliver' : 'Github' }}</el-tag>
+        <el-button @click="isjsDeliver = !isjsDeliver" size="mini" type="success"
+          class="switchUrl"
+          >切换</el-button
         >
       </el-col>
       <el-col>
@@ -241,6 +244,7 @@ export default {
 }
 .imgerr {
   text-align: right;
+  padding-bottom: 20px;
 }
 .item .del {
   display: none;
@@ -250,6 +254,7 @@ export default {
   z-index: 999999999;
   cursor: pointer;
   border: 1px solid #ccc;
+  background: #ccc;
 }
 .item:hover .del {
   display: block;
@@ -275,5 +280,8 @@ export default {
 }
 .diaimg {
   max-height:100vh
+}
+.switchUrl {
+  margin-left: 20px;
 }
 </style>

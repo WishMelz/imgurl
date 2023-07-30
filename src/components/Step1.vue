@@ -1,7 +1,7 @@
 <template>
   <div>
     <h3>创建一个图床仓库</h3>
-    <p>创库创建完成之后设置新建一个Releases</p>
+    <p>仓库创建完成之后设置新建一个Releases</p>
     <img
       src="https://cdn.jsdelivr.net/gh/WishMelz/file/image/repo1.png"
       alt="img"
