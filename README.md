@@ -6,7 +6,9 @@
 
 使用 github-Api 上传到仓库。在使用 jsDelivr 加载图片。
 
-#### 另外一个 TG 图床 https://github.com/WishMelz/tFile 白嫖电报 `https://telegra.ph` 的图床以及视频床,真正意义的白嫖.
+### 基于 `imgur` 的图床管理页面，方便快捷 https://github.com/WishMelz/imgur
+
+#### TG 图床 https://github.com/WishMelz/tFile 白嫖电报 `https://telegra.ph` 的图床以及视频床,真正意义的白嫖.
 
 #### 免费文件储存 https://github.com/WishMelz/gFile 基于 `gofile.io` 即开即用.
 
