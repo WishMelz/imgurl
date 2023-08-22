@@ -12,6 +12,11 @@
             <span>WishMelz</span>
           </div>
         </a>
+        <a target="_black" href="https://wishmelz.github.io/imgur">
+          <div class="imgur">
+            Imgur
+          </div>
+        </a>
         <el-menu
           default-active="2"
           class="el-menu-vertical-demo"
@@ -92,6 +97,8 @@ section {
   display: flex;
   align-items: center;
   justify-content: center;
+  border-top: 1px solid #ccc;
+  padding-top: 10px;
 }
 .avarat img {
   width: 30px;
@@ -103,5 +110,17 @@ section {
   color: #fff;
   font-weight: bold;
   font-size: 14px;
+}
+.imgur {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 20px;
 }
 </style>
