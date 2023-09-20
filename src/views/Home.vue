@@ -1,6 +1,14 @@
 <template>
   <el-container>
-    <el-header style=""> </el-header>
+    <el-header style="" class="header-info">
+      <div class="item active">
+        基于Github的图床
+      </div>
+      <el-divider direction="vertical"></el-divider>
+      <div class="item">
+       <a target="_black" href="https://wishmelz.github.io/imgur"> 基于imgur的图床</a>
+      </div>
+    </el-header>
     <el-container>
       <el-aside width="200px">
         <a target="_black" href="https://github.com/WishMelz">
@@ -12,11 +20,11 @@
             <span>WishMelz</span>
           </div>
         </a>
-        <a target="_black" href="https://wishmelz.github.io/imgur">
+        <!-- <a target="_black" href="https://wishmelz.github.io/imgur">
           <div class="imgur">
             Imgur
           </div>
-        </a>
+        </a> -->
         <el-menu
           default-active="2"
           class="el-menu-vertical-demo"
@@ -122,5 +130,28 @@ section {
   color: #fff;
   font-weight: bold;
   font-size: 20px;
+}
+.header-info {
+  line-height: 60px;
+  text-align: center;
+  color: #000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.header-info .item {
+
+  /* margin-right: 30px; */
+}
+.header-info .item a {
+  color: #eee;
+  cursor: pointer;
+}
+.header-info .item a:hover {
+  font-weight: bold;
+}
+.active {
+  font-weight: bold;
+  color: #fff;
 }
 </style>
