@@ -1,4 +1,4 @@
-# ImgURL - 基于 GitHub 的图片管理系统
+# imgurl - 基于 GitHub 的图片管理系统
 
 [![License](https://img.shields.io/github/license/WishMelz/imgurl)](https://github.com/WishMelz/imgurl/blob/main/LICENSE)
 [![Stars](https://img.shields.io/github/stars/WishMelz/imgurl)](https://github.com/WishMelz/imgurl/stargazers)
