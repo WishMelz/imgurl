@@ -1,58 +1,48 @@
-# imgurl
+# ImgURL
 
-基于github的图片管理系统/免费 https://wishmelz.github.io/imgurl | https://imgurl.icu
+基于 Vue 3、TypeScript、TSX、Pinia、Tailwind CSS 与 shadcn-vue 的 GitHub 图片托管工具。浏览器直接调用 GitHub Contents API，可完成图片批量上传、链接生成、目录浏览和删除。
 
-使用github-Api 上传到仓库。在使用jsDelivr加载图片。
+## 功能
 
-## 项目启动
+- Fine-grained GitHub Token 验证与可写仓库选择
+- 选择、拖拽、粘贴及批量上传图片
+- 随机或原始文件名、覆盖上传、GitHub Raw / jsDelivr 链接
+- 图片库目录浏览、搜索、预览、复制和删除
+- 响应式桌面侧栏与移动端导航、亮色/暗色主题
 
+## 本地开发
+
+```sh
+pnpm install
+pnpm dev
 ```
-npm i   安装依赖
-npm run dev   运行
-npm run build   打包
+
+## 质量检查
+
+```sh
+pnpm run format
+pnpm run lint
+pnpm run type-check
+pnpm run build
 ```
 
-## 使用步骤
+## GitHub Token 权限
 
-#### 首先拿到TOKEN
+建议创建 Fine-grained personal access token：
 
-  1.打开链接https://github.com/settings/tokens 点击  **Generate new token** 按钮
+1. Repository access 只选择图床仓库。
+2. Repository permissions / Contents 设置为 Read and write。
+3. 设置合理有效期并定期轮换。
 
-  2.在打开的 **New personal access token** 中选中"repo"和"user",如下所示
+Token 默认保存在 `sessionStorage`，关闭浏览器会话后失效。只有主动开启“在此设备记住 Token”时才写入 `localStorage`。任何同源 XSS 或恶意浏览器扩展仍可能读取浏览器存储，公共设备上不要启用长期保存。
 
-  ![img](https://cdn.jsdelivr.net/gh/WishMelz/file/image/getToken.png)
+## 仓库和链接限制
 
-  3.然后点击 **Generate token** 按钮，即可生成一个token，如下：
+- 仅支持公开仓库作为公开图床。私有仓库的下载 URL 会过期，不能作为稳定外链。
+- jsDelivr 分支 URL 存在缓存，覆盖后不会立即更新；GitHub 删除源文件后，已缓存副本仍可能继续访问。因此不要上传需要撤回的敏感内容。
+- GitHub Contents API 单目录最多返回 1,000 个条目，建议按年份或业务拆分目录。
+- 出于活动内容安全考虑，当前不接受 SVG 上传。
 
-  ![img](https://cdn.jsdelivr.net/gh/WishMelz/file/image/token.png)
+## 部署
 
-​    生成的TOKEN只会显示一次。记得保存！！
-
-#### 设置存放图片的仓库
-
-创库创建完成之后设置新建一个Releases
-
-<img src="https://cdn.jsdelivr.net/gh/WishMelz/file/image/repo1.png" alt="img" style="zoom:50%;" />
-
-<img src="https://cdn.jsdelivr.net/gh/WishMelz/file/image/repo2.png" alt="img" style="zoom: 33%;" />
-
-随便输入一个版本号，回车即可！！！
-
-#### 项目启动后使用方法
-
-先设置用户token和仓库路劲
-
-<img src="https://cdn.jsdelivr.net/gh/WishMelz/file/image/set.png" alt="img" style="zoom:50%;" />
-
-使用
-
-<img src="https://cdn.jsdelivr.net/gh/WishMelz/file/image/8e1363f2deee8dbedd9b1651974a1498.png" alt="img" style="zoom:50%;" />
-
-列表
-
-<img src="https://cdn.jsdelivr.net/gh/WishMelz/file/image/4af4a12a816480b138bbd2ea27871438.png" alt="img" style="zoom:50%;" />
-
-
-
-欢迎提交Issues改进项目。
-
+项目使用 Hash 路由，可部署到 GitHub Pages 或其他静态托管服务，无需配置 SPA history fallback。若部署到仓库子路径，请通过 Vite `base` 或部署环境设置正确资源基础路径。
