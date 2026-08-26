@@ -1,4 +1,4 @@
-name: Build
+name: Deploy to page branch
 
 on:
   push:
@@ -10,9 +10,10 @@ on:
 
 permissions:
   contents: read
+  pages: read
 
 concurrency:
-  group: build-${{ github.ref }}
+  group: pages
   cancel-in-progress: true
 
 jobs:
@@ -33,16 +34,23 @@ jobs:
           node-version: 24
           cache: pnpm
 
+      - name: Configure GitHub Pages
+        id: pages
+        uses: actions/configure-pages@v6
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Build
         run: pnpm build
+        env:
+          VITE_BASE_URL: ${{ steps.pages.outputs.base_path }}/
 
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v7
+      - name: Deploy dist to page branch
+        if: github.event_name != 'pull_request'
+        uses: peaceiris/actions-gh-pages@v4.1.0
         with:
-          name: imgurl-dist-${{ github.sha }}
-          path: dist/
-          if-no-files-found: error
-          retention-days: 14
+          personal_token: ${{ secrets.PAGES_TOKEN }}
+          publish_branch: page
+          publish_dir: ./dist
+          force_orphan: true
