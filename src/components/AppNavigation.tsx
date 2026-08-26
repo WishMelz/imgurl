@@ -13,7 +13,7 @@ import { useAppStore } from '@/stores/app'
 const navigation = [
   { to: '/upload', label: '上传图片', description: '选择、拖拽或粘贴', icon: UploadCloud },
   { to: '/library', label: '图片库', description: '预览、复制与管理', icon: Images },
-  { to: '/settings', label: '仓库配置', description: 'Token、仓库与目录', icon: Settings2 },
+  { to: '/settings', label: '仓库配置', description: 'Token 与目标仓库', icon: Settings2 },
   { to: '/guide', label: '使用指南', description: '快速开始与安全提示', icon: BookOpen },
 ]
 

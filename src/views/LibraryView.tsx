@@ -1,7 +1,8 @@
-import { computed, defineComponent, onMounted, ref, watch } from 'vue'
+import { computed, defineComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import {
   Check,
+  ChevronLeft,
   ChevronRight,
   Copy,
   ExternalLink,
@@ -9,6 +10,7 @@ import {
   FolderOpen,
   ImageOff,
   Images,
+  Pin,
   RefreshCw,
   Search,
   Settings2,
@@ -48,95 +50,172 @@ import {
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getErrorMessage } from '@/lib/errors'
-import { formatBytes, isImageContent } from '@/lib/files'
-import { buildJsDelivrUrl, normalizeRepositoryPath } from '@/lib/paths'
+import { escapeMarkdownAlt, formatBytes, isImageContent } from '@/lib/files'
+import {
+  buildGitHubRawUrl,
+  buildJsDelivrPurgeUrl,
+  buildJsDelivrUrl,
+  normalizeRepositoryPath,
+} from '@/lib/paths'
 import { useAppStore } from '@/stores/app'
 import type { GitHubContent } from '@/types/github'
+
+interface DeleteTarget {
+  item: GitHubContent
+  token: string
+  owner: string
+  repository: string
+  branch: string
+}
+
+const PAGE_SIZE = 48
 
 export const LibraryView = defineComponent({
   name: 'LibraryView',
   setup() {
     const store = useAppStore()
     const loading = ref(false)
+    const loadError = ref('')
     const items = ref<GitHubContent[]>([])
     const mayBeTruncated = ref(false)
-    const currentPath = ref(normalizeRepositoryPath(store.config.directory))
+    const currentPath = ref('')
     const search = ref('')
     const preview = ref<GitHubContent | null>(null)
-    const pendingDelete = ref<GitHubContent | null>(null)
+    const pendingDelete = ref<DeleteTarget | null>(null)
     const deleting = ref(false)
+    const page = ref(1)
     let requestId = 0
+    let loadController: AbortController | null = null
+    let deleteController: AbortController | null = null
 
-    const owner = computed(() => store.config.owner)
-    const rootPath = computed(() => normalizeRepositoryPath(store.config.directory))
+    const repository = computed(() => store.activeRepository)
+    const owner = computed(() => repository.value?.owner.login || '')
     const folders = computed(() => items.value.filter((item) => item.type === 'dir'))
     const images = computed(() =>
       items.value
         .filter((item) => item.type === 'file' && isImageContent(item.name))
         .filter((item) => item.name.toLowerCase().includes(search.value.trim().toLowerCase())),
     )
+    const pageCount = computed(() => Math.max(1, Math.ceil(images.value.length / PAGE_SIZE)))
+    const visibleImages = computed(() =>
+      images.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE),
+    )
     const breadcrumbs = computed(() => {
-      const rootSegments = rootPath.value.split('/').filter(Boolean)
-      const segments = currentPath.value.split('/').filter(Boolean).slice(rootSegments.length)
+      const segments = currentPath.value.split('/').filter(Boolean)
       return segments.map((name, index) => ({
         name,
-        path: [...rootSegments, ...segments.slice(0, index + 1)].join('/'),
+        path: segments.slice(0, index + 1).join('/'),
       }))
     })
 
     const getUrl = (item: GitHubContent) => {
-      if (store.config.isPrivate) return item.download_url || ''
-      return buildJsDelivrUrl(owner.value, store.config.repository, store.config.branch, item.path)
+      const activeRepository = repository.value
+      if (!activeRepository) return ''
+      if (store.preferences.preferredUrl === 'github') {
+        return (
+          item.download_url ||
+          buildGitHubRawUrl(
+            owner.value,
+            activeRepository.name,
+            activeRepository.default_branch,
+            item.path,
+          )
+        )
+      }
+      return buildJsDelivrUrl(
+        owner.value,
+        activeRepository.name,
+        activeRepository.default_branch,
+        item.path,
+      )
+    }
+
+    const purgeCache = (item: GitHubContent) => {
+      const activeRepository = repository.value
+      if (!activeRepository) return
+      const purgeUrl = buildJsDelivrPurgeUrl(
+        owner.value,
+        activeRepository.name,
+        activeRepository.default_branch,
+        item.path,
+      )
+      const purgeWindow = window.open(purgeUrl, '_blank')
+      if (!purgeWindow) {
+        toast.error('浏览器阻止了缓存刷新窗口，请允许弹出窗口后重试')
+        return
+      }
+      purgeWindow.opener = null
+      toast.success('已提交 jsDelivr 缓存刷新请求，缓存更新可能有短暂延迟')
+    }
+
+    const useCurrentPathForUpload = () => {
+      store.preferences.uploadDirectory = currentPath.value
+      toast.success(
+        currentPath.value ? `已将 ${currentPath.value} 设为上传目录` : '已将仓库根目录设为上传目录',
+      )
     }
 
     const load = async () => {
-      if (!store.isConfigured) return
+      const activeRepository = repository.value
+      if (!store.isConfigured || !activeRepository) return
       const activeRequest = ++requestId
       const requestedPath = currentPath.value
+      loadController?.abort()
+      const controller = new AbortController()
+      loadController = controller
       loading.value = true
+      loadError.value = ''
       try {
         const contents = await getRepositoryContents(
           store.token,
           owner.value,
-          store.config.repository,
+          activeRepository.name,
           currentPath.value,
-          store.config.branch,
+          activeRepository.default_branch,
+          controller.signal,
         )
         if (activeRequest === requestId && requestedPath === currentPath.value) {
           items.value = contents
           mayBeTruncated.value = contents.length >= 1_000
+          page.value = 1
         }
       } catch (error) {
-        if (activeRequest !== requestId) return
+        if (activeRequest !== requestId || controller.signal.aborted) return
         items.value = []
         mayBeTruncated.value = false
-        const message = getErrorMessage(error)
-        if (message.includes('不存在') && currentPath.value === store.config.directory) {
-          toast.info('目标目录尚未创建，上传第一张图片后会自动出现')
-        } else {
-          toast.error(message)
-        }
+        loadError.value = getErrorMessage(error)
+        toast.error(loadError.value)
       } finally {
         if (activeRequest === requestId) loading.value = false
+        if (loadController === controller) loadController = null
       }
     }
 
     onMounted(load)
     watch(
-      () => store.config,
+      () => [store.token, store.config.fullName, store.sessionStatus] as const,
       () => {
-        currentPath.value = normalizeRepositoryPath(store.config.directory)
+        requestId += 1
+        loadController?.abort()
+        deleteController?.abort()
+        currentPath.value = ''
+        preview.value = null
+        pendingDelete.value = null
+        deleting.value = false
+        items.value = []
+        loadError.value = ''
         void load()
       },
-      { deep: true },
     )
+    watch(search, () => (page.value = 1))
+    onBeforeUnmount(() => {
+      requestId += 1
+      loadController?.abort()
+      deleteController?.abort()
+    })
 
     const enterFolder = (path: string) => {
       const target = normalizeRepositoryPath(path)
-      if (rootPath.value && target !== rootPath.value && !target.startsWith(`${rootPath.value}/`)) {
-        toast.error('不能浏览配置目录之外的路径')
-        return
-      }
       currentPath.value = target
       search.value = ''
       void load()
@@ -144,8 +223,7 @@ export const LibraryView = defineComponent({
 
     const goParent = () => {
       const segments = currentPath.value.split('/').filter(Boolean)
-      const rootSegments = rootPath.value.split('/').filter(Boolean)
-      if (segments.length <= rootSegments.length) return
+      if (!segments.length) return
       segments.pop()
       enterFolder(segments.join('/'))
     }
@@ -159,27 +237,57 @@ export const LibraryView = defineComponent({
       }
     }
 
+    const openDelete = (item: GitHubContent) => {
+      const activeRepository = repository.value
+      if (!activeRepository || !store.isConfigured) return
+      pendingDelete.value = {
+        item,
+        token: store.token,
+        owner: activeRepository.owner.login,
+        repository: activeRepository.name,
+        branch: activeRepository.default_branch,
+      }
+    }
+
     const confirmDelete = async () => {
       const target = pendingDelete.value
-      if (!target) return
+      const activeRepository = repository.value
+      if (!target || !activeRepository) return
+      if (
+        !store.isConfigured ||
+        target.token !== store.token ||
+        target.owner !== activeRepository.owner.login ||
+        target.repository !== activeRepository.name ||
+        target.branch !== activeRepository.default_branch
+      ) {
+        pendingDelete.value = null
+        toast.error('登录状态或目标仓库已变化，请重新选择要删除的图片')
+        return
+      }
+      deleteController?.abort()
+      const controller = new AbortController()
+      deleteController = controller
       deleting.value = true
       try {
         await deleteRepositoryFile(
-          store.token,
-          owner.value,
-          store.config.repository,
-          target.path,
-          target.sha,
-          store.config.branch,
+          target.token,
+          target.owner,
+          target.repository,
+          target.item.path,
+          target.item.sha,
+          target.branch,
+          controller.signal,
         )
-        items.value = items.value.filter((item) => item.path !== target.path)
-        if (preview.value?.path === target.path) preview.value = null
+        items.value = items.value.filter((item) => item.path !== target.item.path)
+        if (preview.value?.path === target.item.path) preview.value = null
         pendingDelete.value = null
-        toast.success(`已删除 ${target.name}`)
+        toast.success(`已删除 ${target.item.name}`)
       } catch (error) {
+        if (controller.signal.aborted) return
         toast.error(getErrorMessage(error))
       } finally {
         deleting.value = false
+        if (deleteController === controller) deleteController = null
       }
     }
 
@@ -200,14 +308,9 @@ export const LibraryView = defineComponent({
           <>
             <div class="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-sm sm:flex-row sm:items-center">
               <div class="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  class="shrink-0"
-                  onClick={() => enterFolder(store.config.directory)}
-                >
+                <Button variant="ghost" size="sm" class="shrink-0" onClick={() => enterFolder('')}>
                   <FolderOpen class="size-4" />
-                  {store.config.repository}
+                  {repository.value?.name}
                 </Button>
                 {breadcrumbs.value.map((part) => (
                   <div key={part.path} class="flex items-center">
@@ -223,7 +326,16 @@ export const LibraryView = defineComponent({
                   </div>
                 ))}
               </div>
-              <div class="flex gap-2">
+              <div class="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  aria-label="将当前文件夹设为上传目录"
+                  onClick={useCurrentPathForUpload}
+                >
+                  <Pin class="size-4" />
+                  设为上传目录
+                </Button>
                 <div class="relative min-w-0 flex-1 sm:w-60">
                   <Search class="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
                   <Input
@@ -246,7 +358,7 @@ export const LibraryView = defineComponent({
               </div>
             </div>
 
-            {currentPath.value !== normalizeRepositoryPath(store.config.directory) && (
+            {currentPath.value !== '' && (
               <Button variant="ghost" size="sm" onClick={goParent}>
                 <FolderOpen class="size-4" /> 返回上一级
               </Button>
@@ -257,7 +369,8 @@ export const LibraryView = defineComponent({
                 <ImageOff class="size-4" />
                 <AlertTitle>当前目录结果可能不完整</AlertTitle>
                 <AlertDescription>
-                  GitHub Contents API 单个目录最多返回 1,000 项。请使用子目录整理文件以查看全部内容。
+                  GitHub Contents API 单个目录最多返回 1,000
+                  项。请使用子目录整理文件以查看全部内容。
                 </AlertDescription>
               </Alert>
             )}
@@ -310,7 +423,7 @@ export const LibraryView = defineComponent({
                       <Badge variant="secondary">{images.value.length}</Badge>
                     </div>
                     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                      {images.value.map((image) => (
+                      {visibleImages.value.map((image) => (
                         <Card key={image.path} class="group overflow-hidden p-0">
                           <button
                             type="button"
@@ -339,12 +452,12 @@ export const LibraryView = defineComponent({
                                 variant="ghost"
                                 size="icon-sm"
                                 aria-label={`删除 ${image.name}`}
-                                onClick={() => (pendingDelete.value = image)}
+                                onClick={() => openDelete(image)}
                               >
                                 <Trash2 class="size-4 text-muted-foreground hover:text-destructive" />
                               </Button>
                             </div>
-                            <div class="mt-3 grid grid-cols-2 gap-2">
+                            <div class="mt-3 grid grid-cols-3 gap-2">
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -355,16 +468,67 @@ export const LibraryView = defineComponent({
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => copy(`![image](${getUrl(image)})`, ' Markdown')}
+                                onClick={() =>
+                                  copy(
+                                    `![${escapeMarkdownAlt(store.preferences.markdownAlt || 'image')}](${getUrl(image)})`,
+                                    ' Markdown',
+                                  )
+                                }
                               >
                                 <Check class="size-3.5" /> Markdown
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                aria-label={`刷新 ${image.name} 的 jsDelivr CDN 缓存`}
+                                onClick={() => purgeCache(image)}
+                              >
+                                <RefreshCw class="size-3.5" /> 缓存
                               </Button>
                             </div>
                           </CardContent>
                         </Card>
                       ))}
                     </div>
+                    {pageCount.value > 1 && (
+                      <div class="mt-4 flex items-center justify-center gap-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={page.value === 1}
+                          onClick={() => (page.value -= 1)}
+                        >
+                          <ChevronLeft class="size-4" /> 上一页
+                        </Button>
+                        <span class="text-sm text-muted-foreground">
+                          第 {page.value} / {pageCount.value} 页
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={page.value === pageCount.value}
+                          onClick={() => (page.value += 1)}
+                        >
+                          下一页 <ChevronRight class="size-4" />
+                        </Button>
+                      </div>
+                    )}
                   </section>
+                ) : loadError.value ? (
+                  <Empty class="min-h-80 rounded-2xl border border-destructive/30 bg-card">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <ImageOff />
+                      </EmptyMedia>
+                      <EmptyTitle>图片库加载失败</EmptyTitle>
+                      <EmptyDescription>{loadError.value}</EmptyDescription>
+                    </EmptyHeader>
+                    <EmptyContent>
+                      <Button variant="outline" onClick={load}>
+                        <RefreshCw /> 重新加载
+                      </Button>
+                    </EmptyContent>
+                  </Empty>
                 ) : (
                   <Empty class="min-h-80 rounded-2xl border bg-card">
                     <EmptyHeader>
@@ -428,9 +592,12 @@ export const LibraryView = defineComponent({
                       <ExternalLink /> 新窗口打开
                     </a>
                   </Button>
+                  <Button variant="outline" onClick={() => purgeCache(preview.value!)}>
+                    <RefreshCw /> 刷新 CDN 缓存
+                  </Button>
                   <Button
                     variant="destructive"
-                    onClick={() => (pendingDelete.value = preview.value)}
+                    onClick={() => preview.value && openDelete(preview.value)}
                   >
                     <Trash2 /> 删除图片
                   </Button>
@@ -448,7 +615,7 @@ export const LibraryView = defineComponent({
             <AlertDialogHeader>
               <AlertDialogTitle>确认删除这张图片？</AlertDialogTitle>
               <AlertDialogDescription>
-                将从 GitHub 仓库永久删除“{pendingDelete.value?.name}
+                将从 GitHub 仓库永久删除“{pendingDelete.value?.item.name}
                 ”。此操作无法撤销；已被 jsDelivr 缓存的副本仍可能继续可访问，不能用于撤回敏感内容。
               </AlertDialogDescription>
             </AlertDialogHeader>

@@ -7,14 +7,18 @@ import type {
   GitHubUser,
 } from '@/types/github'
 
-export async function getCurrentUser(token: string): Promise<GitHubUser> {
+export async function getCurrentUser(token: string, signal?: AbortSignal): Promise<GitHubUser> {
   const { data } = await githubClient.get<GitHubUser>('/user', {
     headers: authHeaders(token),
+    signal,
   })
   return data
 }
 
-export async function getRepositories(token: string): Promise<GitHubRepository[]> {
+export async function getRepositories(
+  token: string,
+  signal?: AbortSignal,
+): Promise<GitHubRepository[]> {
   const repositories: GitHubRepository[] = []
   let page = 1
 
@@ -27,13 +31,14 @@ export async function getRepositories(token: string): Promise<GitHubRepository[]
         per_page: 100,
         sort: 'updated',
       },
+      signal,
     })
     repositories.push(...response.data)
     if (!hasNextPage(response.headers.link)) break
     page += 1
   }
 
-  return repositories.filter((repository) => repository.permissions?.push !== false)
+  return repositories.filter((repository) => repository.permissions?.push === true)
 }
 
 function hasNextPage(linkHeader: unknown): boolean {
@@ -46,12 +51,14 @@ export async function getRepositoryContents(
   repository: string,
   path = '',
   ref?: string,
+  signal?: AbortSignal,
 ): Promise<GitHubContent[]> {
   const { data } = await githubClient.get<GitHubContent | GitHubContent[]>(
     buildContentsEndpoint(owner, repository, path),
     {
       headers: authHeaders(token),
       params: ref ? { ref } : undefined,
+      signal,
     },
   )
   return Array.isArray(data) ? data : [data]
@@ -63,6 +70,7 @@ export async function getRepositoryContent(
   repository: string,
   path: string,
   ref?: string,
+  signal?: AbortSignal,
 ): Promise<GitHubContent | null> {
   try {
     const { data } = await githubClient.get<GitHubContent>(
@@ -70,6 +78,7 @@ export async function getRepositoryContent(
       {
         headers: authHeaders(token),
         params: ref ? { ref } : undefined,
+        signal,
       },
     )
     return data
@@ -77,18 +86,6 @@ export async function getRepositoryContent(
     if (axiosStatus(error) === 404) return null
     throw error
   }
-}
-
-export async function getBranch(
-  token: string,
-  owner: string,
-  repository: string,
-  branch: string,
-): Promise<void> {
-  await githubClient.get(
-    `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}/branches/${encodeURIComponent(branch)}`,
-    { headers: authHeaders(token) },
-  )
 }
 
 export async function uploadRepositoryFile(
@@ -99,6 +96,7 @@ export async function uploadRepositoryFile(
   content: string,
   branch: string,
   sha?: string,
+  signal?: AbortSignal,
 ): Promise<GitHubUploadResponse> {
   const { data } = await githubClient.put<GitHubUploadResponse>(
     buildContentsEndpoint(owner, repository, path),
@@ -108,7 +106,7 @@ export async function uploadRepositoryFile(
       branch,
       ...(sha ? { sha } : {}),
     },
-    { headers: authHeaders(token) },
+    { headers: authHeaders(token), signal },
   )
   return data
 }
@@ -120,6 +118,7 @@ export async function deleteRepositoryFile(
   path: string,
   sha: string,
   branch: string,
+  signal?: AbortSignal,
 ): Promise<void> {
   await githubClient.delete(buildContentsEndpoint(owner, repository, path), {
     headers: authHeaders(token),
@@ -128,6 +127,7 @@ export async function deleteRepositoryFile(
       sha,
       branch,
     },
+    signal,
   })
 }
 

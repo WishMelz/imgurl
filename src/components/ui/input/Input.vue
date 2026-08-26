@@ -15,6 +15,8 @@ const props = defineProps<{
   accept?: string
   multiple?: boolean
   name?: string
+  readonly?: boolean
+  onFocus?: (event: FocusEvent) => void
 }>()
 
 const emits = defineEmits<{
@@ -38,6 +40,8 @@ const modelValue = useVModel(props, 'modelValue', emits, {
     :accept="accept"
     :multiple="multiple"
     :name="name"
+    :readonly="readonly"
+    @focus="onFocus"
     data-slot="input"
     :class="
       cn(

@@ -52,6 +52,16 @@ export function buildJsDelivrUrl(
   return `https://cdn.jsdelivr.net/gh/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}@${ref}/${encodeRepositoryPath(path)}`
 }
 
+export function buildJsDelivrPurgeUrl(
+  owner: string,
+  repository: string,
+  branch: string,
+  path: string,
+): string {
+  const ref = encodeURIComponent(branch || 'main')
+  return `https://purge.jsdelivr.net/gh/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}@${ref}/${encodeRepositoryPath(path)}`
+}
+
 export function buildGitHubRawUrl(
   owner: string,
   repository: string,

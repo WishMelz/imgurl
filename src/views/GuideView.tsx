@@ -30,10 +30,10 @@ const steps = [
   {
     icon: GitBranch,
     title: '连接并选择仓库',
-    description: '验证 Token 后，选择公开仓库、默认分支以及图片保存目录。',
+    description: '验证 Token 后，选择并绑定用于保存图片的公开仓库。',
     points: [
       '公开仓库可使用 jsDelivr CDN',
-      '目录可留空，表示保存到仓库根目录',
+      '上传目录可在上传页面随时设置',
       '配置会保存在当前浏览器',
     ],
   },
@@ -80,7 +80,20 @@ export const GuideView = defineComponent({
                   <ExternalLink class="size-4" />
                 </a>
               </Button>
+              <Button asChild variant="outline" size="lg">
+                <a
+                  href="https://github.com/WishMelz/imgurl/blob/v1/README.md#-配置指南"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  旧版图文教程
+                  <ExternalLink class="size-4" />
+                </a>
+              </Button>
             </div>
+            <p class="mt-3 text-sm text-muted-foreground">
+              旧版教程仅供图文步骤参考，Token 权限、Release 与私有仓库说明请以当前页面为准。
+            </p>
           </div>
         </section>
 

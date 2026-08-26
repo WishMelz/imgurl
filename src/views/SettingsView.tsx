@@ -6,7 +6,6 @@ import {
   ExternalLink,
   Eye,
   EyeOff,
-  GitBranch,
   KeyRound,
   LockKeyhole,
   RefreshCw,
@@ -14,7 +13,6 @@ import {
   ShieldCheck,
 } from '@lucide/vue'
 import { toast } from 'vue-sonner'
-import { getBranch } from '@/api/github'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -24,6 +22,7 @@ import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -31,7 +30,6 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Spinner } from '@/components/ui/spinner'
 import { getErrorMessage } from '@/lib/errors'
-import { normalizeRepositoryPath, validateRepositoryDirectory } from '@/lib/paths'
 import { useAppStore } from '@/stores/app'
 
 export const SettingsView = defineComponent({
@@ -43,18 +41,10 @@ export const SettingsView = defineComponent({
     const authenticating = ref(false)
     const refreshing = ref(false)
     const selectedRepository = ref(store.config.fullName)
-    const selectedBranch = ref(store.config.branch)
-    const directory = ref(store.config.directory)
 
     const repository = computed(() =>
       store.repositories.find((item) => item.full_name === selectedRepository.value),
     )
-
-    watch(repository, (value) => {
-      if (!value) return
-      selectedBranch.value =
-        store.config.fullName === value.full_name ? store.config.branch : value.default_branch
-    })
 
     watch(
       () => store.token,
@@ -72,9 +62,7 @@ export const SettingsView = defineComponent({
       authenticating.value = true
       try {
         await store.authenticate(token.value)
-        selectedRepository.value = ''
-        selectedBranch.value = ''
-        directory.value = ''
+        selectedRepository.value = store.config.fullName
         toast.success(`已连接 GitHub：@${store.user?.login}`)
       } catch (error) {
         toast.error(getErrorMessage(error))
@@ -87,6 +75,7 @@ export const SettingsView = defineComponent({
       refreshing.value = true
       try {
         await store.refreshRepositories()
+        selectedRepository.value = store.config.fullName
         toast.success('仓库列表已更新')
       } catch (error) {
         toast.error(getErrorMessage(error))
@@ -95,8 +84,8 @@ export const SettingsView = defineComponent({
       }
     }
 
-    const save = async () => {
-      if (!repository.value || !selectedBranch.value) {
+    const save = () => {
+      if (!repository.value) {
         toast.error('请选择目标仓库')
         return
       }
@@ -104,30 +93,13 @@ export const SettingsView = defineComponent({
         toast.error('私有仓库无法生成稳定的公开图片链接，请选择公开仓库')
         return
       }
-      const directoryError = validateRepositoryDirectory(directory.value)
-      if (directoryError) {
-        toast.error(directoryError)
-        return
-      }
-      try {
-        await getBranch(
-          store.token,
-          repository.value.owner.login,
-          repository.value.name,
-          selectedBranch.value,
-        )
-        store.setConfig({
-          owner: repository.value.owner.login,
-          repository: repository.value.name,
-          fullName: repository.value.full_name,
-          branch: selectedBranch.value,
-          directory: normalizeRepositoryPath(directory.value),
-          isPrivate: repository.value.private,
-        })
-        toast.success('仓库配置已保存')
-      } catch (error) {
-        toast.error(`无法访问该分支：${getErrorMessage(error)}`)
-      }
+      store.setConfig({ fullName: repository.value.full_name })
+      toast.success('仓库已绑定')
+    }
+
+    const onAuthenticateSubmit = (event: Event) => {
+      event.preventDefault()
+      void authenticate()
     }
 
     return () => (
@@ -157,7 +129,7 @@ export const SettingsView = defineComponent({
               <FieldGroup>
                 <Field>
                   <FieldLabel for="github-token">Fine-grained personal access token</FieldLabel>
-                  <div class="flex gap-2">
+                  <form class="flex gap-2" onSubmit={onAuthenticateSubmit}>
                     <div class="relative flex-1">
                       <Input
                         id="github-token"
@@ -181,11 +153,11 @@ export const SettingsView = defineComponent({
                         {showToken.value ? <EyeOff class="size-4" /> : <Eye class="size-4" />}
                       </Button>
                     </div>
-                    <Button class="h-10" disabled={authenticating.value} onClick={authenticate}>
-                      {authenticating.value ? <Spinner /> : <GitBranch class="size-4" />}
+                    <Button type="submit" class="h-10" disabled={authenticating.value}>
+                      {authenticating.value ? <Spinner /> : <KeyRound class="size-4" />}
                       验证连接
                     </Button>
-                  </div>
+                  </form>
                   <FieldDescription>
                     建议只授予目标仓库的 Contents 读写权限。{' '}
                     <a
@@ -222,7 +194,7 @@ export const SettingsView = defineComponent({
                 <div>
                   <CardTitle>目标仓库</CardTitle>
                   <CardDescription class="mt-1.5">
-                    选择保存图片的仓库、分支和可选目录。
+                    选择并绑定保存图片的公开仓库，默认使用仓库默认分支。
                   </CardDescription>
                 </div>
                 <Button
@@ -238,60 +210,31 @@ export const SettingsView = defineComponent({
             </CardHeader>
             <CardContent>
               <FieldGroup>
-                <div class="grid gap-5 md:grid-cols-2">
-                  <Field>
-                    <FieldLabel for="repository">仓库</FieldLabel>
-                    <Select
-                      modelValue={selectedRepository.value}
-                      onUpdate:modelValue={(value: unknown) =>
-                        (selectedRepository.value = String(value || ''))
-                      }
-                      disabled={!store.user}
-                    >
-                      <SelectTrigger id="repository" class="h-10 w-full">
-                        <SelectValue placeholder="选择一个可写仓库" />
-                      </SelectTrigger>
-                      <SelectContent>
+                <Field>
+                  <FieldLabel for="repository">仓库</FieldLabel>
+                  <Select
+                    modelValue={selectedRepository.value}
+                    onUpdate:modelValue={(value: unknown) =>
+                      (selectedRepository.value = String(value || ''))
+                    }
+                    disabled={!store.user}
+                  >
+                    <SelectTrigger id="repository" class="h-10 w-full">
+                      <SelectValue placeholder="选择一个公开仓库" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
                         {store.repositories.map((item) => (
                           <SelectItem key={item.id} value={item.full_name}>
                             {item.full_name} {item.private ? '（私有，不支持公开链接）' : ''}
                           </SelectItem>
                         ))}
-                      </SelectContent>
-                    </Select>
-                    <FieldDescription>已自动加载当前账号可写的仓库。</FieldDescription>
-                  </Field>
-
-                  <Field>
-                    <FieldLabel for="branch">分支</FieldLabel>
-                    <Input
-                      id="branch"
-                      class="h-10"
-                      modelValue={selectedBranch.value}
-                      onUpdate:modelValue={(value: string | number) =>
-                        (selectedBranch.value = String(value))
-                      }
-                      disabled={!repository.value}
-                      placeholder="main"
-                    />
-                    <FieldDescription>默认为仓库默认分支，也可手动修改。</FieldDescription>
-                  </Field>
-                </div>
-
-                <Field>
-                  <FieldLabel for="directory">存储目录（可选）</FieldLabel>
-                  <Input
-                    id="directory"
-                    class="h-10 font-mono"
-                    modelValue={directory.value}
-                    onUpdate:modelValue={(value: string | number) =>
-                      (directory.value = String(value))
-                    }
-                    disabled={!repository.value}
-                    placeholder="images/2026"
-                  />
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
                   <FieldDescription>
-                    无需预先创建目录；上传第一张图片时 GitHub 会自动创建路径。
+                    列表仅依据 GitHub 返回的仓库推送权限筛选；Token 的 Contents 写权限、组织 SSO
+                    和分支规则会在实际上传时验证。图片目录可在上传页面单独设置。
                   </FieldDescription>
                 </Field>
 
@@ -308,7 +251,7 @@ export const SettingsView = defineComponent({
                 <div class="flex justify-end">
                   <Button size="lg" disabled={!repository.value} onClick={save}>
                     <Save class="size-4" />
-                    保存仓库配置
+                    绑定仓库
                   </Button>
                 </div>
               </FieldGroup>
@@ -323,18 +266,10 @@ export const SettingsView = defineComponent({
             </CardHeader>
             <CardContent class="space-y-4 text-sm">
               <div class="grid grid-cols-[88px_1fr] gap-2">
-                <span class="text-muted-foreground">账号</span>
-                <span class="truncate font-medium">
-                  {store.user ? `@${store.user.login}` : '未连接'}
-                </span>
+                <span class="text-muted-foreground">Token</span>
+                <span class="truncate font-medium">{store.token ? '已设置' : '未设置'}</span>
                 <span class="text-muted-foreground">仓库</span>
-                <span class="truncate font-medium">{store.config.repository || '未选择'}</span>
-                <span class="text-muted-foreground">分支</span>
-                <span class="truncate font-medium">{store.config.branch || '—'}</span>
-                <span class="text-muted-foreground">目录</span>
-                <span class="break-all font-mono text-xs">
-                  {store.config.directory || '仓库根目录'}
-                </span>
+                <span class="truncate font-medium">{store.config.fullName || '未选择'}</span>
               </div>
               {store.isConfigured && (
                 <Button asChild class="w-full">

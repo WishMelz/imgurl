@@ -6,15 +6,45 @@ import type { AppState, RepositoryConfig } from '@/types/app'
 
 const TOKEN_KEY = 'imgurl.github-token'
 let sessionRequestId = 0
+let sessionController: AbortController | null = null
 
 const defaultConfig = (): RepositoryConfig => ({
-  owner: '',
-  repository: '',
   fullName: '',
-  branch: '',
-  directory: '',
-  isPrivate: false,
 })
+
+function safeStorageGet(storage: Storage): string {
+  try {
+    return storage.getItem(TOKEN_KEY) || ''
+  } catch {
+    return ''
+  }
+}
+
+function safeStorageRemove(storage: Storage) {
+  try {
+    storage.removeItem(TOKEN_KEY)
+  } catch {
+    // Storage may be unavailable in private or sandboxed browsing contexts.
+  }
+}
+
+function persistTokenSafely(token: string, remember: boolean): boolean {
+  if (!token) {
+    safeStorageRemove(localStorage)
+    safeStorageRemove(sessionStorage)
+    return true
+  }
+
+  const target = remember ? localStorage : sessionStorage
+  const fallback = remember ? sessionStorage : localStorage
+  try {
+    target.setItem(TOKEN_KEY, token)
+  } catch {
+    return false
+  }
+  safeStorageRemove(fallback)
+  return true
+}
 
 export const useAppStore = defineStore('app', {
   state: (): AppState => ({
@@ -31,26 +61,69 @@ export const useAppStore = defineStore('app', {
       rememberToken: false,
       theme: 'system',
       preferredUrl: 'jsdelivr',
+      immediateUpload: false,
+      uploadDirectory: '',
     },
   }),
   getters: {
     isAuthenticated: (state) =>
       Boolean(state.sessionStatus === 'ready' && state.token && state.user?.login),
-    isConfigured: (state) =>
-      Boolean(
+    activeRepository: (state) =>
+      state.repositories.find((repository) => repository.full_name === state.config.fullName) ||
+      null,
+    isConfigured: (state) => {
+      const repository = state.repositories.find(
+        (candidate) => candidate.full_name === state.config.fullName,
+      )
+      return Boolean(
         state.sessionStatus === 'ready' &&
         state.token &&
         state.user?.login &&
-        state.config.owner &&
-        state.config.repository &&
-        state.config.branch &&
-        !state.config.isPrivate,
-      ),
-    activeDirectory: (state) => state.config.directory,
+        repository &&
+        !repository.private,
+      )
+    },
   },
   actions: {
+    migratePersistedState() {
+      const legacyConfig = (this.config || defaultConfig()) as RepositoryConfig & {
+        directory?: unknown
+      }
+      const preferences = (this.preferences || {}) as Partial<AppState['preferences']>
+      const legacyDirectory = legacyConfig.directory
+      if (
+        !preferences.uploadDirectory &&
+        typeof legacyDirectory === 'string' &&
+        legacyDirectory.trim()
+      ) {
+        preferences.uploadDirectory = legacyDirectory.trim()
+      }
+      this.preferences = {
+        markdownAlt:
+          typeof preferences.markdownAlt === 'string' ? preferences.markdownAlt : 'image',
+        namingMode: preferences.namingMode === 'original' ? 'original' : 'random',
+        overwriteExisting:
+          typeof preferences.overwriteExisting === 'boolean'
+            ? preferences.overwriteExisting
+            : false,
+        rememberToken:
+          typeof preferences.rememberToken === 'boolean' ? preferences.rememberToken : false,
+        theme:
+          preferences.theme === 'light' || preferences.theme === 'dark'
+            ? preferences.theme
+            : 'system',
+        preferredUrl: preferences.preferredUrl === 'github' ? 'github' : 'jsdelivr',
+        immediateUpload:
+          typeof preferences.immediateUpload === 'boolean' ? preferences.immediateUpload : false,
+        uploadDirectory:
+          typeof preferences.uploadDirectory === 'string' ? preferences.uploadDirectory : '',
+      }
+      this.config = {
+        fullName: typeof legacyConfig.fullName === 'string' ? legacyConfig.fullName : '',
+      }
+    },
     restoreToken() {
-      this.token = localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY) || ''
+      this.token = safeStorageGet(localStorage) || safeStorageGet(sessionStorage)
       if (!this.token) {
         this.user = null
         this.repositories = []
@@ -58,6 +131,7 @@ export const useAppStore = defineStore('app', {
       }
     },
     async restoreSession() {
+      this.migratePersistedState()
       const previousLogin = this.user?.login
       this.restoreToken()
       if (!this.token) {
@@ -66,6 +140,9 @@ export const useAppStore = defineStore('app', {
         return
       }
 
+      sessionController?.abort()
+      const controller = new AbortController()
+      sessionController = controller
       const activeRequest = ++sessionRequestId
       const restoredToken = this.token
       this.sessionStatus = 'loading'
@@ -74,8 +151,8 @@ export const useAppStore = defineStore('app', {
       this.repositories = []
       try {
         const [user, repositories] = await Promise.all([
-          getCurrentUser(restoredToken),
-          getRepositories(restoredToken),
+          getCurrentUser(restoredToken, controller.signal),
+          getRepositories(restoredToken, controller.signal),
         ])
         if (activeRequest !== sessionRequestId || this.token !== restoredToken) return
         if (previousLogin && previousLogin !== user.login) this.config = defaultConfig()
@@ -86,13 +163,7 @@ export const useAppStore = defineStore('app', {
           if (!repository || repository.private) {
             this.config = defaultConfig()
           } else {
-            this.config = {
-              ...this.config,
-              owner: repository.owner.login,
-              repository: repository.name,
-              fullName: repository.full_name,
-              isPrivate: repository.private,
-            }
+            this.config = { fullName: repository.full_name }
           }
         }
         this.sessionStatus = 'ready'
@@ -106,28 +177,49 @@ export const useAppStore = defineStore('app', {
         this.repositories = []
         this.sessionStatus = 'error'
         this.sessionError = getErrorMessage(error)
+      } finally {
+        if (sessionController === controller) sessionController = null
       }
     },
     persistToken(token: string) {
-      localStorage.removeItem(TOKEN_KEY)
-      sessionStorage.removeItem(TOKEN_KEY)
-      if (!token) return
-      const storage = this.preferences.rememberToken ? localStorage : sessionStorage
-      storage.setItem(TOKEN_KEY, token)
+      return persistTokenSafely(token, this.preferences.rememberToken)
     },
     async authenticate(token: string) {
       const normalizedToken = token.trim()
+      const previousLogin = this.user?.login
+      const previousRepository = this.config.fullName
+      sessionController?.abort()
+      const controller = new AbortController()
+      sessionController = controller
       const activeRequest = ++sessionRequestId
-      const user = await getCurrentUser(normalizedToken)
-      const repositories = await getRepositories(normalizedToken)
-      if (activeRequest !== sessionRequestId) throw new Error('身份验证已取消')
-      this.token = normalizedToken
-      this.user = user
-      this.repositories = repositories
-      this.config = defaultConfig()
-      this.sessionStatus = 'ready'
+      this.sessionStatus = 'loading'
       this.sessionError = ''
-      this.persistToken(normalizedToken)
+      try {
+        const [user, repositories] = await Promise.all([
+          getCurrentUser(normalizedToken, controller.signal),
+          getRepositories(normalizedToken, controller.signal),
+        ])
+        if (activeRequest !== sessionRequestId) throw new Error('身份验证已取消')
+        this.token = normalizedToken
+        this.user = user
+        this.repositories = repositories
+        const repository = repositories.find(
+          (item) => item.full_name === previousRepository && !item.private,
+        )
+        this.config =
+          previousLogin === user.login && repository
+            ? { fullName: repository.full_name }
+            : defaultConfig()
+        this.sessionStatus = 'ready'
+        if (!this.persistToken(normalizedToken)) {
+          this.sessionError = 'Token 无法写入浏览器存储，本次连接仅在当前页面有效'
+        }
+      } catch (error) {
+        if (activeRequest === sessionRequestId) this.sessionStatus = this.token ? 'ready' : 'error'
+        throw error
+      } finally {
+        if (sessionController === controller) sessionController = null
+      }
     },
     setRememberToken(remember: boolean) {
       this.preferences.rememberToken = remember
@@ -139,10 +231,26 @@ export const useAppStore = defineStore('app', {
     async refreshRepositories() {
       if (!this.token) return
       const activeToken = this.token
-      const repositories = await getRepositories(activeToken)
-      if (this.token === activeToken) this.repositories = repositories
+      sessionController?.abort()
+      const controller = new AbortController()
+      sessionController = controller
+      const activeRequest = ++sessionRequestId
+      try {
+        const repositories = await getRepositories(activeToken, controller.signal)
+        if (activeRequest !== sessionRequestId) return
+        if (this.token !== activeToken) return
+        this.repositories = repositories
+        const repository = repositories.find(
+          (item) => item.full_name === this.config.fullName && !item.private,
+        )
+        if (!repository) this.config = defaultConfig()
+      } finally {
+        if (sessionController === controller) sessionController = null
+      }
     },
     signOut() {
+      sessionController?.abort()
+      sessionController = null
       sessionRequestId += 1
       this.token = ''
       this.user = null
@@ -150,8 +258,8 @@ export const useAppStore = defineStore('app', {
       this.config = defaultConfig()
       this.sessionStatus = 'ready'
       this.sessionError = ''
-      localStorage.removeItem(TOKEN_KEY)
-      sessionStorage.removeItem(TOKEN_KEY)
+      safeStorageRemove(localStorage)
+      safeStorageRemove(sessionStorage)
     },
   },
   persist: {

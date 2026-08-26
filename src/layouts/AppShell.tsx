@@ -1,6 +1,13 @@
-import { computed, defineComponent, ref } from 'vue'
+import { computed, defineComponent, nextTick, ref, watch } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
-import { AlertCircle, CheckCircle2, Menu, PanelLeftClose, PanelLeftOpen, RefreshCw } from '@lucide/vue'
+import {
+  AlertCircle,
+  CheckCircle2,
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
+  RefreshCw,
+} from '@lucide/vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -12,7 +19,7 @@ import { useAppStore } from '@/stores/app'
 const titles: Record<string, { title: string; description: string }> = {
   '/upload': { title: '上传图片', description: '把本地图片安全上传到 GitHub 仓库' },
   '/library': { title: '图片库', description: '浏览、复制链接并维护已上传图片' },
-  '/settings': { title: '仓库配置', description: '连接 GitHub 并选择目标仓库与目录' },
+  '/settings': { title: '仓库配置', description: '设置 GitHub Token 并绑定目标仓库' },
   '/guide': { title: '使用指南', description: '从 Token 创建到第一张图片的完整流程' },
 }
 
@@ -23,10 +30,25 @@ export const AppShell = defineComponent({
     const store = useAppStore()
     const sidebarCompact = ref(false)
     const mobileOpen = ref(false)
+    const mainContent = ref<HTMLElement>()
     const heading = computed(() => titles[route.path] || { title: 'ImgURL', description: '' })
+
+    watch(
+      () => route.fullPath,
+      async () => {
+        await nextTick()
+        mainContent.value?.focus({ preventScroll: true })
+      },
+    )
 
     return () => (
       <div class="min-h-screen bg-background text-foreground">
+        <a
+          href="#main-content"
+          class="fixed left-4 top-4 z-50 -translate-y-20 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-transform focus:translate-y-0"
+        >
+          跳至主要内容
+        </a>
         <div
           class={[
             'fixed inset-y-0 left-0 z-40 hidden border-r border-sidebar-border transition-[width] duration-200 lg:block',
@@ -92,7 +114,7 @@ export const AppShell = defineComponent({
               {store.isConfigured ? (
                 <Badge variant="secondary" class="hidden gap-1.5 sm:inline-flex">
                   <CheckCircle2 class="size-3.5 text-emerald-600" />
-                  {store.config.fullName || store.config.repository}/{store.config.branch}
+                  {store.config.fullName}/{store.activeRepository?.default_branch}
                 </Badge>
               ) : (
                 <Badge variant="outline" class="hidden sm:inline-flex">
@@ -102,18 +124,19 @@ export const AppShell = defineComponent({
             </div>
           </header>
 
-          <main class="mx-auto w-full max-w-[1500px] p-4 sm:p-6 lg:p-8">
+          <main
+            ref={mainContent}
+            id="main-content"
+            tabindex={-1}
+            class="mx-auto w-full max-w-[1500px] p-4 outline-none sm:p-6 lg:p-8"
+          >
             {store.sessionStatus === 'error' && (
               <Alert variant="destructive" class="mb-5">
                 <AlertCircle class="size-4" />
                 <AlertTitle>GitHub 会话验证失败</AlertTitle>
                 <AlertDescription class="flex flex-wrap items-center justify-between gap-3">
                   <span>{store.sessionError}。Token 已保留，可在网络恢复后重试。</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => void store.restoreSession()}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => void store.restoreSession()}>
                     <RefreshCw class="size-4" />
                     重试
                   </Button>

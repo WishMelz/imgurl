@@ -51,6 +51,7 @@ export interface UploadResult {
   cdnUrl?: string
   selectedUrl?: string
   markdown?: string
+  bbcode?: string
   html?: string
   error?: string
 }
