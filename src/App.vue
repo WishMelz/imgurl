@@ -13,5 +13,5 @@ onBeforeUnmount(stopTheme)
   <TooltipProvider :delay-duration="300">
     <AppShell />
   </TooltipProvider>
-  <Toaster position="top-right" rich-colors close-button />
+  <Toaster position="bottom-right" rich-colors close-button />
 </template>

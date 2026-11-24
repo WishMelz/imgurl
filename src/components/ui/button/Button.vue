@@ -19,7 +19,11 @@ const props = withDefaults(defineProps<Props>(), {
   as: 'button',
 })
 
-const buttonType = computed(() => (props.as === 'button' ? props.type || 'button' : props.type))
+const buttonType = computed(() =>
+  !props.asChild && props.as === 'button' ? props.type || 'button' : props.type,
+)
+
+const buttonDisabled = computed(() => (props.asChild ? undefined : props.disabled || undefined))
 
 const emit = defineEmits<{
   click: [event: MouseEvent]
@@ -27,9 +31,17 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <Primitive data-slot="button" :data-variant="variant" :data-size="size" :as="as" :as-child="asChild"
-    :disabled="disabled" :type="buttonType" :class="cn(buttonVariants({ variant, size }), props.class)"
-    @click="emit('click', $event)">
+  <Primitive
+    data-slot="button"
+    :data-variant="variant"
+    :data-size="size"
+    :as="as"
+    :as-child="asChild"
+    :disabled="buttonDisabled"
+    :type="buttonType"
+    :class="cn(buttonVariants({ variant, size }), props.class)"
+    @click="emit('click', $event)"
+  >
     <slot />
   </Primitive>
 </template>

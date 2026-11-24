@@ -1,6 +1,7 @@
 import { computed, defineComponent, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import {
+  Archive,
   ArrowRight,
   CheckCircle2,
   ExternalLink,
@@ -16,8 +17,7 @@ import { toast } from 'vue-sonner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -54,6 +54,13 @@ export const SettingsView = defineComponent({
       },
     )
 
+    watch(
+      () => store.config.fullName,
+      (value) => {
+        selectedRepository.value = value
+      },
+    )
+
     const authenticate = async () => {
       if (!token.value.trim()) {
         toast.error('请输入 GitHub Token')
@@ -61,9 +68,12 @@ export const SettingsView = defineComponent({
       }
       authenticating.value = true
       try {
-        await store.authenticate(token.value)
+        const { persisted } = await store.authenticate(token.value)
         selectedRepository.value = store.config.fullName
         toast.success(`已连接 GitHub：@${store.user?.login}`)
+        if (!persisted) {
+          toast.warning('Token 无法写入浏览器存储，本次连接仅在当前页面有效')
+        }
       } catch (error) {
         toast.error(getErrorMessage(error))
       } finally {
@@ -84,6 +94,13 @@ export const SettingsView = defineComponent({
       }
     }
 
+    const toggleRememberToken = (value: boolean) => {
+      const ok = store.setRememberToken(value)
+      if (!ok) {
+        toast.warning('当前浏览器环境不允许写入本地存储，设置未生效')
+      }
+    }
+
     const save = () => {
       if (!repository.value) {
         toast.error('请选择目标仓库')
@@ -91,6 +108,10 @@ export const SettingsView = defineComponent({
       }
       if (repository.value.private) {
         toast.error('私有仓库无法生成稳定的公开图片链接，请选择公开仓库')
+        return
+      }
+      if (repository.value.archived || repository.value.disabled) {
+        toast.error('该仓库已归档或被禁用，无法上传图片，请选择其他仓库')
         return
       }
       store.setConfig({ fullName: repository.value.full_name })
@@ -102,198 +123,223 @@ export const SettingsView = defineComponent({
       void authenticate()
     }
 
+    const formatRepoLabel = (item: {
+      full_name: string
+      private: boolean
+      archived?: boolean
+      disabled?: boolean
+    }) => {
+      const flags: string[] = []
+      if (item.private) flags.push('私有，不支持公开链接')
+      if (item.archived) flags.push('已归档，只读')
+      if (item.disabled) flags.push('已禁用')
+      return flags.length ? `${item.full_name}（${flags.join(' · ')}）` : item.full_name
+    }
+
     return () => (
-      <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div class="space-y-6">
-          <Card>
-            <CardHeader>
-              <div class="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <CardTitle class="flex items-center gap-2">
-                    <KeyRound class="size-5 text-primary" />
-                    GitHub 身份验证
-                  </CardTitle>
-                  <CardDescription class="mt-1.5">
-                    Token 仅用于浏览器直接访问 GitHub API，不会发送到其他服务器。
-                  </CardDescription>
-                </div>
-                {store.user && (
-                  <Badge variant="secondary" class="gap-1.5">
-                    <CheckCircle2 class="size-3.5 text-emerald-600" />
-                    已连接 @{store.user.login}
-                  </Badge>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              <FieldGroup>
-                <Field>
-                  <FieldLabel for="github-token">Fine-grained personal access token</FieldLabel>
-                  <form class="flex gap-2" onSubmit={onAuthenticateSubmit}>
-                    <div class="relative flex-1">
-                      <Input
-                        id="github-token"
-                        type={showToken.value ? 'text' : 'password'}
-                        modelValue={token.value}
-                        onUpdate:modelValue={(value: string | number) =>
-                          (token.value = String(value))
-                        }
-                        autocomplete="off"
-                        placeholder="github_pat_..."
-                        class="h-10 pr-10 font-mono"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        class="absolute right-1 top-1"
-                        aria-label={showToken.value ? '隐藏 Token' : '显示 Token'}
-                        onClick={() => (showToken.value = !showToken.value)}
-                      >
-                        {showToken.value ? <EyeOff class="size-4" /> : <Eye class="size-4" />}
-                      </Button>
-                    </div>
-                    <Button type="submit" class="h-10" disabled={authenticating.value}>
-                      {authenticating.value ? <Spinner /> : <KeyRound class="size-4" />}
-                      验证连接
-                    </Button>
-                  </form>
-                  <FieldDescription>
-                    建议只授予目标仓库的 Contents 读写权限。{' '}
-                    <a
-                      href="https://github.com/settings/personal-access-tokens/new"
-                      target="_blank"
-                      rel="noreferrer"
-                      class="font-medium text-primary underline-offset-4 hover:underline"
-                    >
-                      前往 GitHub 创建 <ExternalLink class="inline size-3" />
-                    </a>
-                  </FieldDescription>
-                </Field>
+      <div class="mx-auto max-w-2xl space-y-6">
+        <header class="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 class="text-xl font-semibold tracking-tight sm:text-2xl">仓库配置</h1>
+            <p class="mt-1 text-sm text-muted-foreground">
+              Token 仅由浏览器直接请求 GitHub API，不会经过任何第三方服务器。
+            </p>
+          </div>
+          {store.isConfigured && (
+            <Button asChild size="sm">
+              <RouterLink to="/upload">
+                前往上传
+                <ArrowRight class="size-3.5" />
+              </RouterLink>
+            </Button>
+          )}
+        </header>
 
-                <Field orientation="horizontal" class="rounded-xl border p-4">
-                  <div class="flex-1">
-                    <FieldLabel for="remember-token">在此设备记住 Token</FieldLabel>
-                    <FieldDescription>
-                      关闭时只保存在当前浏览器会话，退出浏览器后失效；公共设备请勿开启。
-                    </FieldDescription>
-                  </div>
-                  <Switch
-                    id="remember-token"
-                    modelValue={store.preferences.rememberToken}
-                    onUpdate:modelValue={(value: boolean) => store.setRememberToken(value)}
+        <div class="divide-y overflow-hidden rounded-2xl border bg-card shadow-xs">
+          <section class="space-y-4 p-5 sm:p-6">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <KeyRound class="size-4 text-muted-foreground" />
+                <h2 class="text-base font-semibold">GitHub 身份验证</h2>
+              </div>
+              {store.isAuthenticated && store.user && (
+                <Badge variant="secondary" class="gap-1.5">
+                  <CheckCircle2 class="size-3.5 text-emerald-600" />
+                  已连接 @{store.user.login}
+                </Badge>
+              )}
+            </div>
+
+            <Field>
+              <FieldLabel for="github-token">Fine-grained personal access token</FieldLabel>
+              <form class="flex gap-2" onSubmit={onAuthenticateSubmit}>
+                <div class="relative flex-1">
+                  <Input
+                    id="github-token"
+                    type={showToken.value ? 'text' : 'password'}
+                    modelValue={token.value}
+                    onUpdate:modelValue={(value: string | number) => (token.value = String(value))}
+                    autocomplete="off"
+                    placeholder="github_pat_..."
+                    class="h-10 pr-10 font-mono"
                   />
-                </Field>
-              </FieldGroup>
-            </CardContent>
-          </Card>
-
-          <Card class={store.user ? '' : 'opacity-60'}>
-            <CardHeader>
-              <div class="flex items-start justify-between gap-4">
-                <div>
-                  <CardTitle>目标仓库</CardTitle>
-                  <CardDescription class="mt-1.5">
-                    选择并绑定保存图片的公开仓库，默认使用仓库默认分支。
-                  </CardDescription>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!store.user || refreshing.value}
-                  onClick={refresh}
-                >
-                  {refreshing.value ? <Spinner /> : <RefreshCw class="size-4" />}
-                  刷新
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <FieldGroup>
-                <Field>
-                  <FieldLabel for="repository">仓库</FieldLabel>
-                  <Select
-                    modelValue={selectedRepository.value}
-                    onUpdate:modelValue={(value: unknown) =>
-                      (selectedRepository.value = String(value || ''))
-                    }
-                    disabled={!store.user}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    class="absolute right-1 top-1"
+                    aria-label={showToken.value ? '隐藏 Token' : '显示 Token'}
+                    onClick={() => (showToken.value = !showToken.value)}
                   >
-                    <SelectTrigger id="repository" class="h-10 w-full">
-                      <SelectValue placeholder="选择一个公开仓库" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {store.repositories.map((item) => (
-                          <SelectItem key={item.id} value={item.full_name}>
-                            {item.full_name} {item.private ? '（私有，不支持公开链接）' : ''}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                  <FieldDescription>
-                    列表仅依据 GitHub 返回的仓库推送权限筛选；Token 的 Contents 写权限、组织 SSO
-                    和分支规则会在实际上传时验证。图片目录可在上传页面单独设置。
-                  </FieldDescription>
-                </Field>
-
-                {repository.value?.private && (
-                  <Alert variant="destructive">
-                    <LockKeyhole class="size-4" />
-                    <AlertTitle>私有仓库不适合作为公开图床</AlertTitle>
-                    <AlertDescription>
-                      生成的 jsDelivr 链接无法访问，建议改用独立公开仓库。
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                <div class="flex justify-end">
-                  <Button size="lg" disabled={!repository.value} onClick={save}>
-                    <Save class="size-4" />
-                    绑定仓库
+                    {showToken.value ? <EyeOff class="size-4" /> : <Eye class="size-4" />}
                   </Button>
                 </div>
-              </FieldGroup>
-            </CardContent>
-          </Card>
+                <Button type="submit" class="h-10 px-4" disabled={authenticating.value}>
+                  {authenticating.value ? <Spinner /> : <KeyRound class="size-4" />}
+                  验证连接
+                </Button>
+              </form>
+              <FieldDescription class="text-pretty">
+                仅需授予目标仓库 Contents 读写权限。{' '}
+                <a
+                  href="https://github.com/settings/personal-access-tokens/new"
+                  target="_blank"
+                  rel="noreferrer"
+                  class="font-medium text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground"
+                >
+                  前往 GitHub 创建 <ExternalLink class="inline size-3" />
+                </a>
+              </FieldDescription>
+            </Field>
+
+            <div class="flex items-center justify-between gap-4 rounded-xl bg-muted/40 px-4 py-3">
+              <div class="min-w-0">
+                <label for="remember-token" class="block text-sm font-medium">
+                  在此设备记住 Token
+                </label>
+                <p class="mt-0.5 text-pretty text-xs text-muted-foreground">
+                  关闭时仅保存在当前会话，退出浏览器即失效；公共设备请勿开启。
+                </p>
+              </div>
+              <Switch
+                id="remember-token"
+                modelValue={store.preferences.rememberToken}
+                onUpdate:modelValue={toggleRememberToken}
+              />
+            </div>
+          </section>
+
+          <section class="space-y-4 p-5 sm:p-6">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <h2 class="text-base font-semibold">目标公开仓库</h2>
+                <p class="mt-0.5 text-xs text-muted-foreground">
+                  {store.isAuthenticated
+                    ? '选择存放图片的公开仓库，默认使用默认分支。'
+                    : '验证上方 Token 后，即可选择目标仓库。'}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!store.isAuthenticated || refreshing.value}
+                onClick={refresh}
+              >
+                {refreshing.value ? <Spinner /> : <RefreshCw class="size-3.5" />}
+                刷新
+              </Button>
+            </div>
+
+            <Field>
+              <FieldLabel for="repository">仓库</FieldLabel>
+              <Select
+                modelValue={selectedRepository.value}
+                onUpdate:modelValue={(value: unknown) =>
+                  (selectedRepository.value = String(value || ''))
+                }
+                disabled={!store.isAuthenticated}
+              >
+                <SelectTrigger id="repository" class="h-10 w-full">
+                  <SelectValue
+                    placeholder={
+                      store.isAuthenticated ? '选择一个公开仓库' : '请先验证 GitHub Token'
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {store.repositories.map((item) => (
+                      <SelectItem key={item.id} value={item.full_name}>
+                        {formatRepoLabel(item)}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <FieldDescription class="text-pretty">
+                图片上传子目录可在上传页随时调整，无需在此重复配置。
+              </FieldDescription>
+            </Field>
+
+            {repository.value?.private && (
+              <Alert variant="destructive">
+                <LockKeyhole class="size-4" />
+                <AlertTitle>私有仓库不适合作为公开图床</AlertTitle>
+                <AlertDescription>
+                  生成的 jsDelivr 链接无法公开访问，建议改用独立公开仓库。
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {(repository.value?.archived || repository.value?.disabled) && (
+              <Alert variant="destructive">
+                <Archive class="size-4" />
+                <AlertTitle>目标仓库当前不可写入</AlertTitle>
+                <AlertDescription>
+                  已归档或被禁用的仓库处于只读状态，无法通过 API 上传或删除图片。
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+              <div class="text-xs text-muted-foreground">
+                {store.isConfigured && store.activeRepository ? (
+                  <span>
+                    当前已绑定{' '}
+                    <span class="font-mono font-medium text-foreground">
+                      {store.config.fullName}@{store.activeRepository.default_branch}
+                    </span>
+                  </span>
+                ) : (
+                  <span>尚未绑定目标仓库</span>
+                )}
+              </div>
+              <Button
+                disabled={
+                  !store.isAuthenticated ||
+                  !repository.value ||
+                  repository.value.private ||
+                  Boolean(repository.value.archived || repository.value.disabled)
+                }
+                onClick={save}
+              >
+                <Save class="size-4" />
+                绑定仓库
+              </Button>
+            </div>
+          </section>
         </div>
 
-        <aside class="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle class="text-base">当前配置</CardTitle>
-            </CardHeader>
-            <CardContent class="space-y-4 text-sm">
-              <div class="grid grid-cols-[88px_1fr] gap-2">
-                <span class="text-muted-foreground">Token</span>
-                <span class="truncate font-medium">{store.token ? '已设置' : '未设置'}</span>
-                <span class="text-muted-foreground">仓库</span>
-                <span class="truncate font-medium">{store.config.fullName || '未选择'}</span>
-              </div>
-              {store.isConfigured && (
-                <Button asChild class="w-full">
-                  <RouterLink to="/upload">
-                    前往上传
-                    <ArrowRight class="size-4" />
-                  </RouterLink>
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-
-          <Alert class="rounded-2xl">
-            <ShieldCheck class="size-4" />
-            <AlertTitle>权限检查清单</AlertTitle>
-            <AlertDescription>
-              <ul class="mt-2 space-y-2">
-                <li>• 仅授权选中的图床仓库</li>
-                <li>• Repository permissions / Contents：Read and write</li>
-                <li>• 组织仓库可能需要启用 SSO</li>
-              </ul>
-            </AlertDescription>
-          </Alert>
-        </aside>
+        <div class="flex items-start gap-3 rounded-xl border bg-muted/30 px-4 py-3.5 text-xs text-muted-foreground">
+          <ShieldCheck class="mt-0.5 size-4 shrink-0 text-foreground" />
+          <div class="space-y-1 leading-5">
+            <p class="font-medium text-foreground">最小权限检查清单</p>
+            <p>
+              Repository access 仅勾选目标图床仓库 · Repository permissions / Contents 设为 Read and
+              write · 组织仓库按需启用 SSO。
+            </p>
+          </div>
+        </div>
       </div>
     )
   },

@@ -14,6 +14,8 @@ export interface GitHubRepository {
     login: string
   }
   private: boolean
+  archived?: boolean
+  disabled?: boolean
   default_branch: string
   html_url: string
   updated_at: string
@@ -53,5 +55,7 @@ export interface UploadResult {
   markdown?: string
   bbcode?: string
   html?: string
+  originalSize?: number
+  uploadedSize?: number
   error?: string
 }

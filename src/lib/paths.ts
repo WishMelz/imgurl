@@ -1,3 +1,5 @@
+import type { PreferredUrlMode } from '@/types/app'
+
 const trimSlashes = (value: string) => value.trim().replace(/^\/+|\/+$/g, '')
 
 export function normalizeRepositoryPath(value: string): string {
@@ -42,13 +44,17 @@ function encodeRfc3986Character(character: string): string {
   return `%${character.charCodeAt(0).toString(16).toUpperCase()}`
 }
 
+function encodeBranchRef(branch?: string): string {
+  return encodeRepositoryPath(branch || 'main') || 'main'
+}
+
 export function buildJsDelivrUrl(
   owner: string,
   repository: string,
   branch: string,
   path: string,
 ): string {
-  const ref = encodeURIComponent(branch || 'main')
+  const ref = encodeBranchRef(branch)
   return `https://cdn.jsdelivr.net/gh/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}@${ref}/${encodeRepositoryPath(path)}`
 }
 
@@ -58,7 +64,7 @@ export function buildJsDelivrPurgeUrl(
   branch: string,
   path: string,
 ): string {
-  const ref = encodeURIComponent(branch || 'main')
+  const ref = encodeBranchRef(branch)
   return `https://purge.jsdelivr.net/gh/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}@${ref}/${encodeRepositoryPath(path)}`
 }
 
@@ -68,7 +74,49 @@ export function buildGitHubRawUrl(
   branch: string,
   path: string,
 ): string {
-  return `https://raw.githubusercontent.com/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}/${encodeURIComponent(branch || 'main')}/${encodeRepositoryPath(path)}`
+  return `https://raw.githubusercontent.com/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}/${encodeBranchRef(branch)}/${encodeRepositoryPath(path)}`
+}
+
+export function validateCustomUrlTemplate(template: string): string | null {
+  const value = template.trim()
+  if (!value) return '请输入自定义链接模板'
+  if (!/^https?:\/\//i.test(value)) return '自定义链接模板必须以 https:// 或 http:// 开头'
+  if (!value.includes('{path}')) return '自定义链接模板必须包含 {path} 占位符'
+  return null
+}
+
+export function buildCustomUrl(
+  template: string,
+  owner: string,
+  repository: string,
+  branch: string,
+  path: string,
+): string {
+  const normalized = template.trim()
+  return normalized
+    .replaceAll('{owner}', encodeURIComponent(owner))
+    .replaceAll('{repo}', encodeURIComponent(repository))
+    .replaceAll('{branch}', encodeBranchRef(branch))
+    .replaceAll('{path}', encodeRepositoryPath(path))
+}
+
+export function resolvePreferredUrl(options: {
+  mode: PreferredUrlMode
+  customTemplate?: string
+  owner: string
+  repository: string
+  branch: string
+  path: string
+  downloadUrl?: string | null
+}): string {
+  const { mode, customTemplate, owner, repository, branch, path, downloadUrl } = options
+  if (mode === 'custom' && customTemplate && !validateCustomUrlTemplate(customTemplate)) {
+    return buildCustomUrl(customTemplate, owner, repository, branch, path)
+  }
+  if (mode === 'github') {
+    return downloadUrl || buildGitHubRawUrl(owner, repository, branch, path)
+  }
+  return buildJsDelivrUrl(owner, repository, branch, path)
 }
 
 export function buildContentsEndpoint(owner: string, repository: string, path = ''): string {

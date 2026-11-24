@@ -12,6 +12,10 @@ export function getErrorMessage(error: unknown): string {
 
   const status = error.response?.status
   const apiMessage = error.response?.data?.message
+  if (status === 404 && apiMessage?.toLowerCase().includes('repository is empty')) {
+    return '目标仓库为空，请先在 GitHub 初始化默认分支（如创建 README）'
+  }
+
   const messages: Record<number, string> = {
     401: 'Token 无效或已过期，请重新验证',
     403: '访问被拒绝，请检查权限、组织 SSO 或 API 限额',

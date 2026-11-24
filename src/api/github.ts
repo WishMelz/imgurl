@@ -1,3 +1,4 @@
+import type { AxiosRequestConfig } from 'axios'
 import { authHeaders, githubClient } from './client'
 import { buildContentsEndpoint } from '@/lib/paths'
 import type {
@@ -7,8 +8,17 @@ import type {
   GitHubUser,
 } from '@/types/github'
 
+const MAX_REPOSITORY_PAGES = 20
+
+// Bypass GitHub REST API's 60s private browser HTTP cache without sending CORS-blocked Cache-Control headers.
+const noCacheGetConfig: Pick<AxiosRequestConfig, 'adapter' | 'fetchOptions'> = {
+  adapter: ['fetch', 'xhr'],
+  fetchOptions: { cache: 'no-store' },
+}
+
 export async function getCurrentUser(token: string, signal?: AbortSignal): Promise<GitHubUser> {
   const { data } = await githubClient.get<GitHubUser>('/user', {
+    ...noCacheGetConfig,
     headers: authHeaders(token),
     signal,
   })
@@ -22,8 +32,9 @@ export async function getRepositories(
   const repositories: GitHubRepository[] = []
   let page = 1
 
-  while (true) {
+  while (page <= MAX_REPOSITORY_PAGES) {
     const response = await githubClient.get<GitHubRepository[]>('/user/repos', {
+      ...noCacheGetConfig,
       headers: authHeaders(token),
       params: {
         affiliation: 'owner,collaborator,organization_member',
@@ -56,6 +67,7 @@ export async function getRepositoryContents(
   const { data } = await githubClient.get<GitHubContent | GitHubContent[]>(
     buildContentsEndpoint(owner, repository, path),
     {
+      ...noCacheGetConfig,
       headers: authHeaders(token),
       params: ref ? { ref } : undefined,
       signal,
@@ -73,14 +85,18 @@ export async function getRepositoryContent(
   signal?: AbortSignal,
 ): Promise<GitHubContent | null> {
   try {
-    const { data } = await githubClient.get<GitHubContent>(
+    const { data } = await githubClient.get<GitHubContent | GitHubContent[]>(
       buildContentsEndpoint(owner, repository, path),
       {
+        ...noCacheGetConfig,
         headers: authHeaders(token),
         params: ref ? { ref } : undefined,
         signal,
       },
     )
+    if (Array.isArray(data)) {
+      throw new Error('目标路径是已存在的目录，请修改文件名或目录')
+    }
     return data
   } catch (error: unknown) {
     if (axiosStatus(error) === 404) return null
@@ -97,6 +113,7 @@ export async function uploadRepositoryFile(
   branch: string,
   sha?: string,
   signal?: AbortSignal,
+  onUploadProgress?: (ratio: number) => void,
 ): Promise<GitHubUploadResponse> {
   const { data } = await githubClient.put<GitHubUploadResponse>(
     buildContentsEndpoint(owner, repository, path),
@@ -106,7 +123,21 @@ export async function uploadRepositoryFile(
       branch,
       ...(sha ? { sha } : {}),
     },
-    { headers: authHeaders(token), signal },
+    {
+      headers: authHeaders(token),
+      signal,
+      onUploadProgress: onUploadProgress
+        ? (event) => {
+            if (typeof event.progress === 'number' && Number.isFinite(event.progress)) {
+              onUploadProgress(Math.min(1, Math.max(0, event.progress)))
+              return
+            }
+            if (event.total && event.total > 0) {
+              onUploadProgress(Math.min(1, Math.max(0, event.loaded / event.total)))
+            }
+          }
+        : undefined,
+    },
   )
   return data
 }
@@ -131,7 +162,7 @@ export async function deleteRepositoryFile(
   })
 }
 
-function axiosStatus(error: unknown): number | undefined {
+export function axiosStatus(error: unknown): number | undefined {
   if (typeof error !== 'object' || error === null || !('response' in error)) return undefined
   const response = (error as { response?: { status?: number } }).response
   return response?.status

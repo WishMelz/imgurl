@@ -13,4 +13,5 @@ app.use(pinia)
 app.use(router)
 
 const store = useAppStore(pinia)
-void store.restoreSession().finally(() => app.mount('#app'))
+app.mount('#app')
+void store.restoreSession()

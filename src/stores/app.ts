@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import axios from 'axios'
 import { getCurrentUser, getRepositories } from '@/api/github'
 import { getErrorMessage } from '@/lib/errors'
-import type { AppState, RepositoryConfig } from '@/types/app'
+import type { AppState, PreferredUrlMode, RepositoryConfig } from '@/types/app'
 
 const TOKEN_KEY = 'imgurl.github-token'
 let sessionRequestId = 0
@@ -46,6 +46,19 @@ function persistTokenSafely(token: string, remember: boolean): boolean {
   return true
 }
 
+function isUsableRepository(repository: {
+  private: boolean
+  archived?: boolean
+  disabled?: boolean
+}): boolean {
+  return !repository.private && !repository.archived && !repository.disabled
+}
+
+function normalizePreferredUrl(value: unknown): PreferredUrlMode {
+  if (value === 'github' || value === 'custom') return value
+  return 'jsdelivr'
+}
+
 export const useAppStore = defineStore('app', {
   state: (): AppState => ({
     token: '',
@@ -54,6 +67,7 @@ export const useAppStore = defineStore('app', {
     config: defaultConfig(),
     sessionStatus: 'idle',
     sessionError: '',
+    uploadResults: [],
     preferences: {
       markdownAlt: 'image',
       namingMode: 'random',
@@ -61,8 +75,12 @@ export const useAppStore = defineStore('app', {
       rememberToken: false,
       theme: 'system',
       preferredUrl: 'jsdelivr',
+      customUrlTemplate: '',
       immediateUpload: false,
       uploadDirectory: '',
+      compressImages: false,
+      compressQuality: 0.85,
+      convertToWebp: false,
     },
   }),
   getters: {
@@ -80,7 +98,7 @@ export const useAppStore = defineStore('app', {
         state.token &&
         state.user?.login &&
         repository &&
-        !repository.private,
+        isUsableRepository(repository),
       )
     },
   },
@@ -98,6 +116,11 @@ export const useAppStore = defineStore('app', {
       ) {
         preferences.uploadDirectory = legacyDirectory.trim()
       }
+      const rawQuality =
+        typeof preferences.compressQuality === 'number' &&
+        Number.isFinite(preferences.compressQuality)
+          ? preferences.compressQuality
+          : 0.85
       this.preferences = {
         markdownAlt:
           typeof preferences.markdownAlt === 'string' ? preferences.markdownAlt : 'image',
@@ -112,11 +135,18 @@ export const useAppStore = defineStore('app', {
           preferences.theme === 'light' || preferences.theme === 'dark'
             ? preferences.theme
             : 'system',
-        preferredUrl: preferences.preferredUrl === 'github' ? 'github' : 'jsdelivr',
+        preferredUrl: normalizePreferredUrl(preferences.preferredUrl),
+        customUrlTemplate:
+          typeof preferences.customUrlTemplate === 'string' ? preferences.customUrlTemplate : '',
         immediateUpload:
           typeof preferences.immediateUpload === 'boolean' ? preferences.immediateUpload : false,
         uploadDirectory:
           typeof preferences.uploadDirectory === 'string' ? preferences.uploadDirectory : '',
+        compressImages:
+          typeof preferences.compressImages === 'boolean' ? preferences.compressImages : false,
+        compressQuality: Math.min(0.95, Math.max(0.5, rawQuality)),
+        convertToWebp:
+          typeof preferences.convertToWebp === 'boolean' ? preferences.convertToWebp : false,
       }
       this.config = {
         fullName: typeof legacyConfig.fullName === 'string' ? legacyConfig.fullName : '',
@@ -132,7 +162,6 @@ export const useAppStore = defineStore('app', {
     },
     async restoreSession() {
       this.migratePersistedState()
-      const previousLogin = this.user?.login
       this.restoreToken()
       if (!this.token) {
         this.sessionStatus = 'ready'
@@ -155,12 +184,11 @@ export const useAppStore = defineStore('app', {
           getRepositories(restoredToken, controller.signal),
         ])
         if (activeRequest !== sessionRequestId || this.token !== restoredToken) return
-        if (previousLogin && previousLogin !== user.login) this.config = defaultConfig()
         this.user = user
         this.repositories = repositories
         if (this.config.fullName) {
           const repository = repositories.find((item) => item.full_name === this.config.fullName)
-          if (!repository || repository.private) {
+          if (!repository || !isUsableRepository(repository)) {
             this.config = defaultConfig()
           } else {
             this.config = { fullName: repository.full_name }
@@ -184,10 +212,11 @@ export const useAppStore = defineStore('app', {
     persistToken(token: string) {
       return persistTokenSafely(token, this.preferences.rememberToken)
     },
-    async authenticate(token: string) {
+    async authenticate(token: string): Promise<{ persisted: boolean }> {
       const normalizedToken = token.trim()
       const previousLogin = this.user?.login
       const previousRepository = this.config.fullName
+      const previousSessionError = this.sessionError
       sessionController?.abort()
       const controller = new AbortController()
       sessionController = controller
@@ -204,26 +233,39 @@ export const useAppStore = defineStore('app', {
         this.user = user
         this.repositories = repositories
         const repository = repositories.find(
-          (item) => item.full_name === previousRepository && !item.private,
+          (item) => item.full_name === previousRepository && isUsableRepository(item),
         )
         this.config =
           previousLogin === user.login && repository
             ? { fullName: repository.full_name }
             : defaultConfig()
         this.sessionStatus = 'ready'
-        if (!this.persistToken(normalizedToken)) {
-          this.sessionError = 'Token 无法写入浏览器存储，本次连接仅在当前页面有效'
-        }
+        this.sessionError = ''
+        const persisted = this.persistToken(normalizedToken)
+        return { persisted }
       } catch (error) {
-        if (activeRequest === sessionRequestId) this.sessionStatus = this.token ? 'ready' : 'error'
+        if (activeRequest === sessionRequestId) {
+          if (this.token && !this.user) {
+            this.sessionStatus = 'error'
+            this.sessionError = previousSessionError || getErrorMessage(error)
+          } else {
+            this.sessionStatus = 'ready'
+          }
+        }
         throw error
       } finally {
         if (sessionController === controller) sessionController = null
       }
     },
-    setRememberToken(remember: boolean) {
+    setRememberToken(remember: boolean): boolean {
+      const previous = this.preferences.rememberToken
       this.preferences.rememberToken = remember
-      this.persistToken(this.token)
+      if (!this.token) return true
+      const persisted = this.persistToken(this.token)
+      if (!persisted) {
+        this.preferences.rememberToken = previous
+      }
+      return persisted
     },
     setConfig(config: RepositoryConfig) {
       this.config = { ...config }
@@ -241,9 +283,14 @@ export const useAppStore = defineStore('app', {
         if (this.token !== activeToken) return
         this.repositories = repositories
         const repository = repositories.find(
-          (item) => item.full_name === this.config.fullName && !item.private,
+          (item) => item.full_name === this.config.fullName && isUsableRepository(item),
         )
         if (!repository) this.config = defaultConfig()
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 401) {
+          this.signOut()
+        }
+        throw error
       } finally {
         if (sessionController === controller) sessionController = null
       }
@@ -256,6 +303,7 @@ export const useAppStore = defineStore('app', {
       this.user = null
       this.repositories = []
       this.config = defaultConfig()
+      this.uploadResults = []
       this.sessionStatus = 'ready'
       this.sessionError = ''
       safeStorageRemove(localStorage)
@@ -263,6 +311,6 @@ export const useAppStore = defineStore('app', {
     },
   },
   persist: {
-    pick: ['user', 'config', 'preferences'],
+    pick: ['config', 'preferences'],
   },
 })
